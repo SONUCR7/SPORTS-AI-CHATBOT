@@ -1,0 +1,34 @@
+{
+  "name": "sports-ai-chatbot",
+  "version": "1.0.0",
+  "description": "Zero-Hallucination AI Sports Chatbot for Cricket, Football, and Badminton with RAG, 100-page Compendium, LangGraph Pipeline, 3D UI, and PostgreSQL Session Storage",
+  "main": "server/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "seed": "node server/rag/indexer.js"
+  },
+  "keywords": [
+    "sports-ai",
+    "cricket",
+    "football",
+    "badminton",
+    "rag",
+    "langgraph",
+    "langchain",
+    "postgresql",
+    "threejs"
+  ],
+  "author": "SportsAI Team",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "sqlite3": "^5.1.7"
+  }
+}

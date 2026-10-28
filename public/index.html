@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SportsAI — Zero-Hallucination Sports Oracle</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js CDN for 3D UI -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/custom.css?v=2.0">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              cyan: '#00f2fe',
+              purple: '#8b5cf6',
+              indigo: '#6366f1',
+              dark: '#0a0e17',
+              sidebar: '#0d111a',
+              card: 'rgba(18, 24, 38, 0.75)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#0a0e17] text-gray-100 min-h-screen flex selection:bg-cyan-500 selection:text-black overflow-hidden relative">
+
+  <!-- 3D Interactive Three.js Canvas in Background -->
+  <div id="three-canvas-container"></div>
+
+  <!-- Ambient Blue Radiant Glow in Center (Matches Picture 1) -->
+  <div class="fixed inset-0 gemini-bg-glow pointer-events-none z-0"></div>
+
+  <!-- ========================================== -->
+  <!-- LEFT SIDEBAR (Matches Picture 2 layout)    -->
+  <!-- ========================================== -->
+  <aside id="sidebar" class="w-72 bg-[#0c1018] border-r border-white/10 flex flex-col z-30 transition-all duration-300 relative h-screen">
+    
+    <!-- Sidebar Top Header -->
+    <div class="p-4 flex items-center justify-between border-b border-white/5">
+      <div class="flex items-center gap-2.5">
+        <!-- 4-pointed Gemini sparkle icon with gradient -->
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 via-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/20">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/>
+          </svg>
+        </div>
+        <span class="font-bold text-white text-base tracking-tight flex items-center gap-1.5">
+          SportsAI <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-normal">3.8</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button onclick="openCompendiumModal()" title="Open 100-Page Compendium" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </button>
+        <button onclick="toggleSidebar()" title="Collapse sidebar" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Primary Action: + New Chat Button (Picture 2 style) -->
+    <div class="p-3">
+      <button onclick="startNewChatSession()" class="w-full py-2.5 px-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold flex items-center gap-2.5 transition group shadow-sm">
+        <svg class="w-4 h-4 text-cyan-400 group-hover:rotate-90 transition transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        <span>New chat</span>
+      </button>
+    </div>
+
+    <!-- Quick Navigation Icons (Matches Picture 2) -->
+    <div class="px-3 py-1 space-y-1 text-xs text-gray-400">
+      <button onclick="openCompendiumModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
+        <span>📚</span> <span>100-Page Compendium</span>
+      </button>
+      <button onclick="openLiveFeedModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
+        <span>⚡</span> <span>Live Match Center</span>
+      </button>
+      <button onclick="openPlayerMatrixModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
+        <span>📊</span> <span>Player Matrix Matchups</span>
+      </button>
+      <button onclick="open3DInspectorModal('cricket')" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
+        <span>🌐</span> <span>3D Sports Equipment</span>
+      </button>
+    </div>
+
+    <!-- Notebooks / Sports Section -->
+    <div class="px-4 pt-3 pb-1 flex items-center justify-between text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+      <span>Sport Domains</span>
+      <span class="text-[10px] text-cyan-400">3 Active</span>
+    </div>
+    <div class="px-3 pb-2 flex items-center gap-1.5">
+      <button onclick="setSportFilter('cricket')" class="px-2.5 py-1 rounded-lg bg-red-950/40 border border-red-500/30 text-[11px] text-red-300 hover:bg-red-900/50 transition">🏏 Cricket</button>
+      <button onclick="setSportFilter('football')" class="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-300 hover:bg-emerald-900/50 transition">⚽ Football</button>
+      <button onclick="setSportFilter('badminton')" class="px-2.5 py-1 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 hover:bg-indigo-900/50 transition">🏸 Badminton</button>
+    </div>
+
+    <!-- History Section: "All" with filter icon (Picture 2 exact match) -->
+    <div class="px-4 py-2 flex items-center justify-between text-xs font-semibold text-gray-300 border-t border-white/5">
+      <span>All</span>
+      <button title="Filter history" class="text-gray-400 hover:text-cyan-400 transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+      </button>
+    </div>
+
+    <!-- Dynamic Session History List from PostgreSQL / DB -->
+    <div id="session-history-list" class="flex-1 overflow-y-auto px-2 space-y-1 text-xs">
+      <!-- Injected via JavaScript -->
+    </div>
+
+    <!-- Bottom User Profile Bar (Matches Picture 2 exact profile with Penguin Avatar) -->
+    <div class="p-3 border-t border-white/10 bg-[#080b12]/80 backdrop-blur-md flex items-center justify-between">
+      <div class="flex items-center gap-2.5 overflow-hidden">
+        <!-- Penguin / Analyst Avatar from Picture 2 -->
+        <div class="w-8 h-8 rounded-full bg-cyan-900/60 border border-cyan-400/40 flex items-center justify-center text-sm shadow-inner overflow-hidden flex-shrink-0">
+          <span class="text-base">🐧</span>
+        </div>
+        <div class="overflow-hidden">
+          <div id="user-display-name" class="text-xs font-bold text-white truncate">Arighna Nandi</div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-semibold text-cyan-400">Pro</span>
+            <span class="text-[9px] text-emerald-400">● PG DB Sync</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button onclick="openSettingsModal()" title="Settings & LLM Model Keys" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition">
+          ⚙️
+        </button>
+        <button onclick="handleLogout()" title="Logout" class="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-white/5 transition">
+          🚪
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ========================================== -->
+  <!-- MAIN CHAT SCREEN (Matches Picture 1)       -->
+  <!-- ========================================== -->
+  <main class="flex-1 flex flex-col h-screen relative z-10 overflow-hidden">
+    
+    <!-- Top Bar -->
+    <header class="h-14 border-b border-white/10 px-6 flex items-center justify-between glass-panel z-20">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition lg:hidden">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <span id="active-session-title" class="text-xs font-bold text-gray-200 flex items-center gap-2 truncate max-w-sm">
+          <span>⚡</span> <span id="session-title-text">SportsAI Arena</span>
+        </span>
+
+        <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hidden sm:inline-flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Zero-Hallucination Active</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- RAG 100-Page badge -->
+        <button onclick="openCompendiumModal()" class="text-xs px-3 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-medium hover:bg-cyan-500/20 transition hidden md:flex items-center gap-1.5">
+          <span>📖</span> <span>100 Pages Grounded</span>
+        </button>
+
+        <!-- Get app button from Picture 1 -->
+        <a href="https://github.com" target="_blank" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 flex items-center gap-1.5 transition">
+          <span>📥</span> <span>Get app</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Chat Messages Viewport -->
+    <div id="messages-container" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl w-full mx-auto">
+      
+      <!-- EMPTY STATE (Exact Match to Picture 1) -->
+      <div id="empty-state" class="min-h-[70vh] flex flex-col items-center justify-center text-center space-y-8 my-auto">
+        
+        <!-- Big Gemini-like Heading from Picture 1 -->
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+          Where should we start?
+        </h1>
+
+        <!-- Prompt Bar Center (Picture 1 style) -->
+        <div class="w-full max-w-2xl px-2">
+          <div class="relative glass-panel rounded-2xl border border-white/15 p-2 shadow-2xl shadow-cyan-500/10 focus-within:border-cyan-400/60 transition">
+            
+            <div class="flex items-center gap-2 px-2">
+              <span class="text-gray-400 text-lg">＋</span>
+              <input type="text" id="empty-user-input" onkeydown="handleEmptyInputKeyDown(event)" placeholder="Ask SportsAI..." class="w-full bg-transparent text-sm text-white placeholder-gray-400 focus:outline-none py-2">
+              
+              <!-- Model selector badge 'Argon v' from Picture 1 -->
+              <div class="relative">
+                <button onclick="toggleModelDropdown()" id="model-selector-btn" class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 flex items-center gap-1 transition">
+                  <span id="current-model-label">Argon</span>
+                  <span class="text-[10px]">▼</span>
+                </button>
+                <div id="model-dropdown" class="hidden absolute right-0 top-9 w-48 bg-[#121826] border border-white/15 rounded-xl shadow-2xl p-1 z-30 text-xs">
+                  <button onclick="selectModel('SportsGemini 3.8 RAG')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-cyan-300">SportsGemini 3.8 (Default)</button>
+                  <button onclick="selectModel('Hugging Face SportsLLM')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-amber-300">🤗 Hugging Face SportsLLM</button>
+                  <button onclick="selectModel('Argon Flash')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300">Argon Flash</button>
+                  <button onclick="selectModel('DeepSeek RAG')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300">DeepSeek RAG</button>
+                </div>
+              </div>
+
+              <!-- Microphone Icon (Speech-to-Text) from Picture 1 -->
+              <button onclick="startVoiceRecognition()" title="Voice input" class="p-2 text-gray-400 hover:text-cyan-400 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+              </button>
+
+              <!-- Send Button -->
+              <button onclick="submitEmptyPrompt()" class="p-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition shadow-md shadow-cyan-500/30">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Mode pills below search bar: 'Chat', 'Task' from Picture 1 -->
+          <div class="flex items-center justify-center gap-2 mt-3">
+            <button onclick="setQueryMode('chat')" id="pill-mode-chat" class="px-4 py-1.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold shadow-sm">
+              Chat
+            </button>
+            <button onclick="setQueryMode('tactical')" id="pill-mode-tactical" class="px-4 py-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white border border-white/10 text-xs font-medium">
+              Tactical Breakdown
+            </button>
+            <button onclick="setQueryMode('rules')" id="pill-mode-rules" class="px-4 py-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white border border-white/10 text-xs font-medium">
+              Rule Verification
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Suggestion Cards from Picture 1 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl px-2 pt-2">
+          <button onclick="applySuggestion('Compare Virat Kohli vs Babar Azam across ICC tournaments and cover drive technique')" class="p-3.5 rounded-2xl glass-panel border border-white/10 glass-panel-hover text-left flex items-start gap-2.5">
+            <span class="text-xl">🏏</span>
+            <div>
+              <div class="text-xs font-bold text-white leading-snug">Compare Kohli vs Babar</div>
+              <div class="text-[11px] text-gray-400 mt-0.5">ICC stats & cover drives</div>
+            </div>
+          </button>
+
+          <button onclick="applySuggestion('Explain the False 9 tactic & Gegenpressing pressing triggers in modern football')" class="p-3.5 rounded-2xl glass-panel border border-white/10 glass-panel-hover text-left flex items-start gap-2.5">
+            <span class="text-xl">⚽</span>
+            <div>
+              <div class="text-xs font-bold text-white leading-snug">False 9 & Gegenpressing</div>
+              <div class="text-[11px] text-gray-400 mt-0.5">Tactical pressing triggers</div>
+            </div>
+          </button>
+
+          <button onclick="applySuggestion('What is the smash speed world record by Satwiksairaj Rankireddy and BWF 1.15m service rule?')" class="p-3.5 rounded-2xl glass-panel border border-white/10 glass-panel-hover text-left flex items-start gap-2.5">
+            <span class="text-xl">🏸</span>
+            <div>
+              <div class="text-xs font-bold text-white leading-snug">565 km/h Smash Record</div>
+              <div class="text-[11px] text-gray-400 mt-0.5">Satwik & BWF service law</div>
+            </div>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ACTIVE MESSAGES CONTAINER -->
+      <div id="messages-list" class="space-y-6">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </div>
+
+    <!-- Bottom Persistent Input Bar (Visible during active conversation) -->
+    <div id="bottom-prompt-bar" class="p-4 border-t border-white/10 glass-panel z-20">
+      <div class="max-w-4xl mx-auto">
+        <form onsubmit="handleChatSubmit(event)" class="relative glass-panel rounded-2xl border border-white/15 p-2 focus-within:border-cyan-400/60 shadow-xl transition flex items-center gap-2">
+          
+          <button type="button" onclick="startNewChatSession()" title="New Chat" class="p-2 text-gray-400 hover:text-white transition">
+            ＋
+          </button>
+
+          <textarea id="chat-input" rows="1" onkeydown="handleTextareaKeyDown(event)" placeholder="Ask any question about Cricket, Football or Badminton..." class="w-full bg-transparent text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none resize-none py-1.5"></textarea>
+
+          <button type="button" onclick="startVoiceRecognition()" title="Voice Dictation" class="p-2 text-gray-400 hover:text-cyan-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          </button>
+
+          <button type="submit" id="chat-send-btn" class="p-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-black font-bold transition shadow-md shadow-cyan-500/25">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </form>
+
+        <div class="flex items-center justify-between text-[11px] text-gray-500 px-3 pt-1.5">
+          <span>Grounded in 100-Page Sports Compendium (MCC • IFAB • BWF)</span>
+          <span class="text-cyan-400/80">LangGraph Verification Active</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODALS                                     -->
+  <!-- ========================================== -->
+
+  <!-- 1. 100-Page Compendium Modal -->
+  <div id="compendium-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-4xl w-full h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-5 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>📚</span> 100-Page Sports Compendium
+          </h3>
+          <p class="text-xs text-gray-400">Official RAG Training Knowledge Base (Cricket pp. 1-34, Football pp. 35-68, Badminton pp. 69-100)</p>
+        </div>
+        <button onclick="closeCompendiumModal()" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5">✕</button>
+      </div>
+
+      <div class="flex-1 flex overflow-hidden">
+        <!-- Page Index list -->
+        <div id="compendium-index-list" class="w-72 border-r border-white/10 overflow-y-auto p-2 space-y-1 text-xs">
+          <!-- Injected via JS -->
+        </div>
+
+        <!-- Page Content View -->
+        <div id="compendium-page-content" class="flex-1 overflow-y-auto p-6 space-y-4 text-xs text-gray-300">
+          <div class="text-center text-gray-500 mt-20">Select a page on the left to read verified content.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 3D Object Inspector Modal -->
+  <div id="inspector-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-lg w-full p-6 text-center shadow-2xl relative">
+      <button onclick="close3DInspectorModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <h3 id="inspector-title" class="text-lg font-bold text-white mb-1">3D Sports Equipment View</h3>
+      <p id="inspector-desc" class="text-xs text-gray-400 mb-4">Rotate, zoom and inspect aerodynamic physics.</p>
+      
+      <div id="inspector-canvas-box" class="w-full h-64 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center relative overflow-hidden">
+        <!-- Rendered interactive 3D model -->
+      </div>
+
+      <div class="flex justify-center gap-2 mt-4">
+        <button onclick="inspectSportObject('cricket')" class="px-3 py-1.5 rounded-xl bg-red-950/60 border border-red-500/40 text-xs text-red-300">🏏 Cricket Ball</button>
+        <button onclick="inspectSportObject('football')" class="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs text-emerald-300">⚽ Football</button>
+        <button onclick="inspectSportObject('badminton')" class="px-3 py-1.5 rounded-xl bg-indigo-950/60 border border-indigo-500/40 text-xs text-indigo-300">🏸 Shuttlecock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Settings Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">⚙️ SportsAI System Configuration</h3>
+        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-gray-300 mb-1">Database Engine Status</label>
+          <div id="db-status-badge" class="p-3 rounded-xl bg-white/5 border border-white/10 text-emerald-300 flex items-center justify-between">
+            <span>● PostgreSQL Auto-Sync Active</span>
+            <span class="text-[10px] text-gray-400">Node DB</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-300 mb-1">Hugging Face API Token / HF_TOKEN</label>
+          <input type="password" id="settings-hf-key" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-300 mb-1">Google Gemini API Key (Optional)</label>
+          <input type="password" id="settings-gemini-key" placeholder="Enter GEMINI_API_KEY" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-300 mb-1">OpenAI API Key (Optional)</label>
+          <input type="password" id="settings-openai-key" placeholder="Enter OPENAI_API_KEY" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-300 mb-1">Default Sport Domain</label>
+          <select id="settings-sport-pref" class="w-full bg-[#161d2d] border border-white/10 rounded-xl px-3 py-2 text-white">
+            <option value="all">All Three Sports (Tri-Sport Council)</option>
+            <option value="cricket">Cricket Specialist</option>
+            <option value="football">Football Specialist</option>
+            <option value="badminton">Badminton Specialist</option>
+          </select>
+        </div>
+
+        <button onclick="saveSettings()" class="w-full mt-2 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition">
+          Save Configuration
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D Sports Floating Interactive Controls -->
+  <div class="fixed bottom-6 left-80 z-30 hidden md:flex items-center gap-1.5 p-1.5 rounded-2xl glass-panel border border-white/10 shadow-xl backdrop-blur-xl">
+    <span class="text-[11px] font-mono text-cyan-400 px-2 flex items-center gap-1">
+      <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> 3D Arena:
+    </span>
+    <button onclick="window.sports3D?.focusSport('football')" class="px-2.5 py-1 text-xs rounded-xl bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 text-gray-300 transition flex items-center gap-1">
+      <span>⚽</span> Football
+    </button>
+    <button onclick="window.sports3D?.focusSport('cricket')" class="px-2.5 py-1 text-xs rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-300 border border-white/5 hover:border-red-500/30 text-gray-300 transition flex items-center gap-1">
+      <span>🏏</span> Bat & Ball
+    </button>
+    <button onclick="window.sports3D?.focusSport('badminton')" class="px-2.5 py-1 text-xs rounded-xl bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-300 border border-white/5 hover:border-indigo-500/30 text-gray-300 transition flex items-center gap-1">
+      <span>🏸</span> Shuttlecock
+    </button>
+    <button onclick="window.sports3D?.resetView()" title="Reset 3D View" class="px-2 py-1 text-xs rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition">
+      ↺
+    </button>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="js/app.js?v=2.0"></script>
+  <script src="js/three-scene.js?v=3.5"></script>
+  <script src="js/compendium-modal.js?v=2.0"></script>
+</body>
+</html>
