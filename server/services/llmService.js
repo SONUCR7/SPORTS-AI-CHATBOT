@@ -199,7 +199,7 @@ class LLMService {
 
   async _callOllama({ host, model, systemPrompt, userPrompt, temperature }) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+    const timeout = setTimeout(() => controller.abort(), 180000);
     try {
       const targetModel = model || process.env.OLLAMA_MODEL || 'phi3:latest';
       const response = await fetch(`${host}/api/generate`, {
@@ -212,7 +212,7 @@ class LLMService {
           stream: false,
           options: {
             temperature: temperature !== undefined ? temperature : 0.3,
-            num_predict: 450
+            num_predict: 280
           }
         }),
         signal: controller.signal

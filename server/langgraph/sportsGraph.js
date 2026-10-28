@@ -113,11 +113,11 @@ I can also provide a ↳ [specialized breakdown or tactical guide].`;
 TOPIC/SPORT: ${state.classification.sport.toUpperCase()}
 
 VERIFIED COMPENDIUM KNOWLEDGE BASE:
-${state.ragChunks.map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content.slice(0, 320)}...\n${c.stats && Object.keys(c.stats).length > 0 ? `STATS: ${JSON.stringify(c.stats)}` : ''}`).join('\n\n')}
+${state.ragChunks.slice(0, 2).map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content.slice(0, 280)}...\n${c.stats && Object.keys(c.stats).length > 0 ? `STATS: ${JSON.stringify(c.stats)}` : ''}`).join('\n\n')}
 
 ${state.liveContext ? `LIVE CONTEXT:\n${JSON.stringify(state.liveContext, null, 2)}` : ''}
 
-Synthesize an engaging, authoritative, zero-hallucination response addressing the query directly.`;
+Synthesize a fluent, conversational ChatGPT-style markdown response directly answering the query with key facts, comparison tables where appropriate, and follow-up suggestion chips.`;
 
     state.rawOutput = await llmService.generateCompletion({
       systemPrompt,
