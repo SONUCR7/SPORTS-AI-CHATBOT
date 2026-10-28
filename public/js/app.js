@@ -459,11 +459,11 @@ async function sendChatMessage(query) {
   // 2. Typing indicator with animated sports icons
   const typingId = `typing_${Date.now()}`;
   const typingHtml = `
-    <div id="${typingId}" class="flex items-center gap-2.5 text-xs text-cyan-300 py-3 px-4 glass-panel rounded-2xl border border-cyan-500/20 w-fit mb-4">
+    <div id="${typingId}" class="flex items-center gap-2.5 text-xs text-cyan-300 py-3 px-4 glass-panel rounded-2xl border border-cyan-500/20 w-fit mb-4 shadow-lg backdrop-blur-md">
       <span class="animate-bounce">🏏</span>
       <span class="animate-bounce delay-100">⚽</span>
       <span class="animate-bounce delay-200">🏸</span>
-      <span class="text-gray-300 ml-1">Ollama Phi-3 + LangGraph verifying with 100-page sports compendium...</span>
+      <span class="text-gray-300 ml-1 font-medium tracking-wide">Thinking...</span>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', typingHtml);
