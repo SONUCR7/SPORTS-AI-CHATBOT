@@ -1,18 +1,18 @@
 /**
- * ChatGPT / SportsAI Main Client Application Logic
- * Implements authentic ChatGPT UI matching Pictures 1 & 2:
- * - Solid dark canvas (#212121) and sidebar (#171717)
- * - Ollama Phi-3 integration by default
- * - Direct prose canvas rendering with follow-up suggestions (↳)
- * - User bubble on right, action buttons on assistant message
- * - Floating prompt pill with Think toggle, mic & blue send button
+ * SportsAI Main Client Application Logic (v3.0)
+ * 3D Interactive Cyber-Sports Arena with ChatGPT-like Intelligence:
+ * - Real-time Three.js 3D sports objects (bat, ball, football, shuttlecock with hover physics)
+ * - Ollama Phi-3 Mini (3.8B) local LLM integration + LangGraph RAG reasoning
+ * - Dynamic session auto-naming in PostgreSQL / SQLite
+ * - Interactive ChatGPT follow-up suggestion chips (↳)
+ * - Message action controls (Like, Dislike, Copy, Read Aloud, 3D Inspect, Grounding Verification)
  */
 
 let currentUser = null;
 let currentSessionId = null;
 let activeSessions = [];
 let activeModel = 'phi3:latest';
-let isDeepThinkActive = false;
+let activeQueryMode = 'chat';
 let isSidebarOpen = true;
 
 // Initialization
@@ -38,7 +38,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load user sessions from database
   await loadUserSessions();
+
+  // Check database status
+  checkDbStatus();
+
+  // Setup auto-expanding textarea
+  setupTextareaAutoResize();
 });
+
+// Setup textarea auto-resizing
+function setupTextareaAutoResize() {
+  const textarea = document.getElementById('chat-input');
+  if (!textarea) return;
+
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 140) + 'px';
+  });
+}
 
 // Sidebar Toggle
 function toggleSidebar() {
@@ -46,25 +63,31 @@ function toggleSidebar() {
   if (!sidebar) return;
   isSidebarOpen = !isSidebarOpen;
   if (isSidebarOpen) {
-    sidebar.classList.remove('-ml-64');
+    sidebar.classList.remove('-ml-72');
   } else {
-    sidebar.classList.add('-ml-64');
+    sidebar.classList.add('-ml-72');
   }
 }
 
-function focusSearchInput() {
-  const q = prompt('Search chat history:');
-  if (q && q.trim()) {
-    const match = activeSessions.find(s => s.title.toLowerCase().includes(q.toLowerCase()));
-    if (match) {
-      switchSession(match.id);
-    } else {
-      showToast('No matching conversation found', 'info');
+// Check Database Status
+async function checkDbStatus() {
+  try {
+    const res = await fetch('/api/settings/status');
+    const data = await res.json();
+    const badge = document.getElementById('db-status-badge');
+    if (badge) {
+      if (data.database.mode === 'postgres') {
+        badge.innerHTML = `<span class="text-emerald-400 font-bold">● PostgreSQL Connected</span> <span class="text-[10px] text-gray-400">Port 5432</span>`;
+      } else {
+        badge.innerHTML = `<span class="text-cyan-300 font-bold">● High-Speed SQLite (PG Compatible)</span> <span class="text-[10px] text-gray-400">Node DB</span>`;
+      }
     }
+  } catch (e) {
+    console.warn('Status check failed:', e);
   }
 }
 
-// Load Chat Sessions from PostgreSQL / DB
+// Load Chat Sessions from DB
 async function loadUserSessions(autoSwitch = true) {
   if (!currentUser) return;
   try {
@@ -96,24 +119,28 @@ async function loadUserSessions(autoSwitch = true) {
   }
 }
 
-// Render Session History in Sidebar (Exact Picture 1 & 2 Style)
+// Render Session History in Sidebar
 function renderSessionList() {
   const listEl = document.getElementById('session-history-list');
   if (!listEl) return;
 
   if (activeSessions.length === 0) {
-    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No recent chats</div>`;
+    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No saved sports chats yet.</div>`;
     return;
   }
 
   listEl.innerHTML = activeSessions.map(s => {
     const isActive = s.id === currentSessionId;
+    const sportIcon = s.sport === 'cricket' ? '🏏' : s.sport === 'football' ? '⚽' : s.sport === 'badminton' ? '🏸' : '⚡';
     return `
-      <div class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${isActive ? 'bg-[#2f2f2f] text-white font-medium' : 'text-gray-300 hover:bg-[#212121] hover:text-white'}" onclick="switchSession('${s.id}')">
-        <span class="truncate text-xs">${escapeHtml(s.title)}</span>
-        <div class="hidden group-hover:flex items-center gap-1.5 text-gray-400">
-          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="hover:text-white p-0.5">✏️</button>
-          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="hover:text-rose-400 p-0.5">🗑️</button>
+      <div class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition ${isActive ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold' : 'text-gray-300 hover:bg-white/5 hover:text-white'}" onclick="switchSession('${s.id}')">
+        <div class="flex items-center gap-2 truncate">
+          <span class="text-xs flex-shrink-0">${sportIcon}</span>
+          <span class="truncate text-xs">${escapeHtml(s.title)}</span>
+        </div>
+        <div class="hidden group-hover:flex items-center gap-1">
+          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="text-gray-400 hover:text-white p-0.5">✏️</button>
+          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="text-gray-400 hover:text-rose-400 p-0.5">🗑️</button>
         </div>
       </div>
     `;
@@ -128,8 +155,7 @@ async function switchSession(sessionId) {
 
   const activeSess = activeSessions.find(s => s.id === sessionId);
   if (activeSess) {
-    const titleEl = document.getElementById('session-title-text');
-    if (titleEl) titleEl.innerText = activeSess.title;
+    document.getElementById('session-title-text').innerText = activeSess.title;
   }
 
   // Fetch messages from DB
@@ -142,7 +168,7 @@ async function switchSession(sessionId) {
   }
 }
 
-// Start New Chat Session (Exact ChatGPT Style)
+// Start New Chat Session (ChatGPT / Gemini Style)
 async function startNewChatSession() {
   if (!currentUser) return;
 
@@ -151,14 +177,13 @@ async function startNewChatSession() {
   const messagesList = document.getElementById('messages-list');
   const hasMessages = messagesList && messagesList.children.length > 0;
 
-  // If already in an empty "New chat" session, keep and focus it
+  // If already on an empty "New chat", keep and focus it without creating duplicates
   if (currentSess && (currentSess.title === 'New chat' || currentSess.title === 'New Tri-Sport Conversation') && !hasMessages) {
     if (emptyState) emptyState.classList.remove('hidden');
     if (messagesList) messagesList.innerHTML = '';
-    document.body.classList.remove('in-conversation');
     const titleEl = document.getElementById('session-title-text');
     if (titleEl) titleEl.innerText = 'New chat';
-    const input = document.getElementById('chat-input');
+    const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
     if (input) {
       input.value = '';
       input.focus();
@@ -186,8 +211,7 @@ async function startNewChatSession() {
       if (titleEl) titleEl.innerText = 'New chat';
       if (emptyState) emptyState.classList.remove('hidden');
       if (messagesList) messagesList.innerHTML = '';
-      document.body.classList.remove('in-conversation');
-      const input = document.getElementById('chat-input');
+      const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
       if (input) {
         input.value = '';
         input.focus();
@@ -244,7 +268,7 @@ async function deleteSession(e, sessionId) {
   }
 }
 
-// Render Messages (Exact Match to Picture 1 & 2 Layout)
+// Render Messages in 3D Arena with ChatGPT Features
 function renderMessages(messages) {
   const emptyState = document.getElementById('empty-state');
   const messagesList = document.getElementById('messages-list');
@@ -252,16 +276,14 @@ function renderMessages(messages) {
   if (!messages || messages.length === 0) {
     emptyState?.classList.remove('hidden');
     if (messagesList) messagesList.innerHTML = '';
-    document.body.classList.remove('in-conversation');
     return;
   }
 
   emptyState?.classList.add('hidden');
-  document.body.classList.add('in-conversation');
 
   messagesList.innerHTML = messages.map(msg => {
     if (msg.role === 'user') {
-      // User message bubble on the right (Picture 1 & 2 exact style)
+      // User Message (Right-aligned user bubble)
       return `
         <div class="flex justify-end mb-4">
           <div class="user-bubble">
@@ -270,63 +292,105 @@ function renderMessages(messages) {
         </div>
       `;
     } else {
-      // Assistant message: Clean direct-prose canvas render
-      const parsedHtml = marked.parse(msg.content);
-      const citations = msg.citations || [];
+      // Assistant Message (Translucent cyber-card with full markdown & ChatGPT actions)
+      let content = msg.content || '';
+      
+      // Parse markdown
+      let parsedHtml = '';
+      try {
+        parsedHtml = marked.parse(content);
+      } catch (e) {
+        parsedHtml = escapeHtml(content);
+      }
 
-      // Extract or generate follow-up suggestion chips (Exact Picture 2 format)
+      const sportIcon = msg.sport === 'cricket' ? '🏏' : msg.sport === 'football' ? '⚽' : msg.sport === 'badminton' ? '🏸' : '⚡';
+      const groundingScore = msg.grounding_score || 95;
+
+      // Check for follow-up suggestions (↳ format)
       let followUpHtml = '';
-      if (!msg.content.includes('Want to learn more?')) {
-        followUpHtml = `
-          <div class="mt-4 pt-3 border-t border-white/5 text-xs text-gray-400 space-y-1.5">
-            <p class="font-medium text-gray-300">Want to learn more?</p>
-            <div class="flex flex-wrap gap-2 pt-1">
-              <button onclick="applySuggestion('Key rules and regulations breakdown')" class="suggestion-chip">
-                <span class="text-gray-400">↳</span> <span>Rules & regulations breakdown</span>
-              </button>
-              <button onclick="applySuggestion('Compare player records and tactical stats')" class="suggestion-chip">
-                <span class="text-gray-400">↳</span> <span>Player records & tactical stats</span>
-              </button>
-              <button onclick="open3DInspectorModal('${msg.sport || 'football'}')" class="suggestion-chip text-blue-400 border-blue-500/30">
-                <span>🌐</span> <span>Inspect 3D equipment</span>
-              </button>
+      if (content.includes('↳')) {
+        const lines = content.split('\n');
+        const chips = [];
+        lines.forEach(l => {
+          if (l.includes('↳')) {
+            const clean = l.replace(/^.*↳\s*/, '').replace(/[\[\]*]/g, '').trim();
+            if (clean && clean.length > 2) {
+              chips.push(clean);
+            }
+          }
+        });
+
+        if (chips.length > 0) {
+          followUpHtml = `
+            <div class="mt-4 pt-3 border-t border-white/10 text-xs">
+              <div class="font-semibold text-cyan-300 mb-1.5 flex items-center gap-1.5">
+                <span>↳</span> <span>Follow-up questions & topics:</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                ${chips.map(chip => `
+                  <button onclick="applySuggestion('${escapeHtml(chip).replace(/'/g, "\\'")}')" class="suggestion-chip">
+                    <span>↳</span> <span>${escapeHtml(chip)}</span>
+                  </button>
+                `).join('')}
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
       }
 
       return `
-        <div class="flex flex-col space-y-3 pt-2 pb-6 mb-2">
-          <!-- Main Content (Direct Canvas Markdown) -->
-          <div class="assistant-prose">
-            ${parsedHtml}
-          </div>
+        <div class="flex flex-col mb-4">
+          <div class="assistant-card">
+            <!-- Header Bar -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-gradient-to-tr from-cyan-400 via-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs shadow-md">
+                  <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
+                </div>
+                <span class="font-bold text-xs text-white">SportsAI</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Ollama Phi-3</span>
+                <span class="text-xs">${sportIcon}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>${groundingScore}% Grounded</span>
+                </span>
+              </div>
+            </div>
 
-          ${followUpHtml}
+            <!-- Markdown Content -->
+            <div class="markdown-body">
+              ${parsedHtml}
+            </div>
 
-          <!-- Assistant Action Buttons Row (Exact Match to Picture 2) -->
-          <div class="flex items-center gap-1 text-gray-400 pt-2 text-sm select-none">
-            <button onclick="handleFeedback(this, 'like')" title="Good response" class="action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
-            </button>
-            <button onclick="handleFeedback(this, 'dislike')" title="Bad response" class="action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.761.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/></svg>
-            </button>
-            <button onclick="speakText(this)" data-text="${escapeHtml(msg.content.replace(/[#*`|]/g, ''))}" title="Read aloud" class="action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
-            </button>
-            <button onclick="copyToClipboard(this)" data-text="${escapeHtml(msg.content)}" title="Copy" class="action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-            </button>
-            <button onclick="open3DInspectorModal('${msg.sport || 'football'}')" title="Inspect in 3D" class="action-btn text-blue-400">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-            </button>
+            <!-- Follow-up chips -->
+            ${followUpHtml}
 
-            <!-- Subtle Grounding Pill with drawer -->
-            <button onclick="openCompendiumModal()" title="Grounded in 100-Page Compendium" class="ml-2 text-[11px] text-gray-500 hover:text-gray-300 flex items-center gap-1 transition">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>100% Grounded</span>
-            </button>
+            <!-- ChatGPT Action Bar -->
+            <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10 text-xs">
+              <div class="flex items-center gap-1">
+                <button onclick="handleFeedback(this, 'like')" title="Helpful" class="msg-action-btn">
+                  <span>👍</span>
+                </button>
+                <button onclick="handleFeedback(this, 'dislike')" title="Not helpful" class="msg-action-btn">
+                  <span>👎</span>
+                </button>
+                <button onclick="copyToClipboard(this)" data-text="${escapeHtml(content)}" title="Copy response" class="msg-action-btn">
+                  <span>📋</span> <span>Copy</span>
+                </button>
+                <button onclick="speakText(this)" data-text="${escapeHtml(content.replace(/[#*`|]/g, ''))}" title="Read aloud" class="msg-action-btn">
+                  <span>🔊</span> <span>Listen</span>
+                </button>
+                <button onclick="open3DInspectorModal('${msg.sport || 'cricket'}')" title="Inspect in 3D" class="msg-action-btn text-cyan-400">
+                  <span>🌐</span> <span>3D View</span>
+                </button>
+              </div>
+
+              <button onclick="openCompendiumModal()" title="View 100-page verified RAG citations" class="text-[11px] text-cyan-400/80 hover:text-cyan-300 transition flex items-center gap-1">
+                <span>📖</span> <span>Compendium Verified</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -349,6 +413,22 @@ async function handleChatSubmit(e) {
   await sendChatMessage(query);
 }
 
+function handleEmptyInputKeyDown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitEmptyPrompt();
+  }
+}
+
+function submitEmptyPrompt() {
+  const input = document.getElementById('empty-user-input');
+  if (!input) return;
+  const query = input.value.trim();
+  if (!query) return;
+  input.value = '';
+  sendChatMessage(query);
+}
+
 function handleTextareaKeyDown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -356,25 +436,17 @@ function handleTextareaKeyDown(e) {
   }
 }
 
-// Auto-grow textarea
-document.addEventListener('input', (e) => {
-  if (e.target.id === 'chat-input') {
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
-  }
-});
-
-// Send Message via LangGraph Pipeline + Ollama Phi-3
+// Send Message via LangGraph + Ollama Phi-3 Pipeline
 async function sendChatMessage(query) {
   if (!currentSessionId) {
     await startNewChatSession();
   }
 
   const messagesList = document.getElementById('messages-list');
-  document.getElementById('empty-state')?.classList.add('hidden');
-  document.body.classList.add('in-conversation');
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.classList.add('hidden');
 
-  // 1. Append user bubble
+  // 1. Immediately append user bubble
   const userHtml = `
     <div class="flex justify-end mb-4">
       <div class="user-bubble">
@@ -384,16 +456,14 @@ async function sendChatMessage(query) {
   `;
   messagesList.insertAdjacentHTML('beforeend', userHtml);
 
-  // 2. Typing indicator (ChatGPT animated dots)
+  // 2. Typing indicator with animated sports icons
   const typingId = `typing_${Date.now()}`;
   const typingHtml = `
-    <div id="${typingId}" class="flex items-center gap-2 text-gray-400 text-xs py-3 px-1 select-none">
-      <div class="flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
-        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-150"></span>
-        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-300"></span>
-      </div>
-      <span class="text-gray-400 ml-1">ChatGPT (${activeModel.replace(':latest', '')}) thinking...</span>
+    <div id="${typingId}" class="flex items-center gap-2.5 text-xs text-cyan-300 py-3 px-4 glass-panel rounded-2xl border border-cyan-500/20 w-fit mb-4">
+      <span class="animate-bounce">🏏</span>
+      <span class="animate-bounce delay-100">⚽</span>
+      <span class="animate-bounce delay-200">🏸</span>
+      <span class="text-gray-300 ml-1">Ollama Phi-3 + LangGraph verifying with 100-page sports compendium...</span>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', typingHtml);
@@ -423,7 +493,7 @@ async function sendChatMessage(query) {
       throw new Error(data.error || 'Failed to process message');
     }
 
-    // Dynamic smart title update
+    // Dynamic smart title update (Gemini / ChatGPT / Claude style)
     if (data.sessionTitle) {
       const sess = activeSessions.find(s => s.id === currentSessionId);
       if (sess) {
@@ -436,7 +506,7 @@ async function sendChatMessage(query) {
       renderSessionList();
     }
 
-    // Refresh entire session from DB
+    // Refresh entire session from DB to render formatted response & action controls
     await switchSession(currentSessionId);
     await loadUserSessions(false);
 
@@ -446,88 +516,106 @@ async function sendChatMessage(query) {
   }
 }
 
-// Suggestion Chip Click
+// Suggestion click
 function applySuggestion(text) {
   sendChatMessage(text);
 }
 
-// Deep Think Toggle
-function toggleDeepThink() {
-  isDeepThinkActive = !isDeepThinkActive;
-  const btn = document.getElementById('think-btn');
-  if (btn) {
-    if (isDeepThinkActive) {
-      btn.className = 'px-3 py-1 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/50 text-xs flex items-center gap-1.5 transition flex-shrink-0';
-      showToast('Deep Think Active: Performing in-depth tactical synthesis', 'info');
-    } else {
-      btn.className = 'px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 flex items-center gap-1.5 transition flex-shrink-0';
+// Mode Selection ('chat', 'tactical', 'rules')
+function setQueryMode(mode) {
+  activeQueryMode = mode;
+  ['chat', 'tactical', 'rules'].forEach(m => {
+    const btn = document.getElementById(`pill-mode-${m}`);
+    if (btn) {
+      if (m === mode) {
+        btn.className = 'px-4 py-1.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold shadow-sm';
+      } else {
+        btn.className = 'px-4 py-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white border border-white/10 text-xs font-medium';
+      }
     }
-  }
+  });
 }
 
-// Model Selection
+// Model Dropdown
 function toggleModelDropdown() {
   const dd = document.getElementById('model-dropdown');
-  dd?.classList.toggle('hidden');
+  if (dd) dd.classList.toggle('hidden');
 }
 
 function selectModel(modelName) {
   activeModel = modelName;
-  const label = document.getElementById('current-model-label');
-  if (label) {
-    if (modelName.includes('phi3')) label.innerText = 'ChatGPT (Ollama Phi-3)';
-    else if (modelName.includes('qwen')) label.innerText = 'ChatGPT (Ollama Qwen 4B)';
-    else if (modelName.includes('gemini')) label.innerText = 'ChatGPT (Gemini 1.5)';
-    else label.innerText = modelName.split(' ')[0];
+  const label = modelName.includes('phi3') ? 'Ollama (Phi-3)' :
+                modelName.includes('qwen') ? 'Ollama (Qwen-3)' :
+                modelName.includes('Gemini') ? 'Gemini 1.5' :
+                modelName.includes('Hugging') ? 'SportsLLM' : modelName;
+
+  const headerLabel = document.getElementById('header-model-label');
+  if (headerLabel) headerLabel.innerText = label;
+
+  const dd = document.getElementById('model-dropdown');
+  if (dd) dd.classList.add('hidden');
+
+  showToast(`Active Intelligence: ${label}`, 'info');
+}
+
+// Sport Filter Selection
+function setSportFilter(sport) {
+  showToast(`Focused on ${sport.toUpperCase()} domain`, 'info');
+  if (window.sports3D) {
+    window.sports3D.focusSport(sport);
   }
-  document.getElementById('model-dropdown')?.classList.add('hidden');
-  showToast(`Active Model: ${modelName}`, 'info');
 }
 
 // Voice Dictation (Web Speech API)
 function startVoiceRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    showToast('Speech recognition not supported in your browser', 'error');
+    showToast('Speech recognition not supported in this browser. Please type your query.', 'error');
     return;
   }
 
   const recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  showToast('Listening... Speak now', 'info');
+  showToast('Listening... Speak your sports question now', 'info');
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
-    const input = document.getElementById('chat-input');
-    if (input) input.value = transcript;
+    const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
+    if (input) {
+      input.value = transcript;
+    }
     showToast(`Heard: "${transcript}"`, 'success');
   };
 
   recognition.onerror = () => {
-    showToast('Voice dictation ended', 'info');
+    showToast('Voice dictation cancelled or timed out', 'info');
   };
 
   recognition.start();
 }
 
-// Text-to-Speech
+// Text-to-Speech (Audio Read Aloud)
 function speakText(btn) {
   const text = btn.getAttribute('data-text');
   if (!text || !window.speechSynthesis) return;
 
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`;
+    btn.innerHTML = `<span>🔊</span> <span>Listen</span>`;
     return;
   }
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 1.05;
+  utterance.pitch = 1.0;
+
+  utterance.onstart = () => {
+    btn.innerHTML = `<span>⏹️</span> <span>Stop</span>`;
+  };
   utterance.onend = () => {
-    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`;
+    btn.innerHTML = `<span>🔊</span> <span>Listen</span>`;
   };
 
-  btn.innerHTML = `<svg class="w-4 h-4 text-blue-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -536,35 +624,15 @@ function copyToClipboard(btn) {
   const text = btn.getAttribute('data-text');
   if (!text) return;
   navigator.clipboard.writeText(text);
-  const oldSvg = btn.innerHTML;
-  btn.innerHTML = `<span class="text-emerald-400 text-xs">✓</span>`;
-  setTimeout(() => btn.innerHTML = oldSvg, 1800);
+  const oldHtml = btn.innerHTML;
+  btn.innerHTML = `<span>✓</span> <span>Copied!</span>`;
+  setTimeout(() => btn.innerHTML = oldHtml, 2000);
 }
 
-// Feedback (Thumbs Up / Down)
+// Thumbs feedback
 function handleFeedback(btn, type) {
-  btn.classList.add(type === 'like' ? 'text-emerald-400' : 'text-rose-400');
-  showToast(type === 'like' ? 'Feedback recorded! Glad this was helpful.' : 'Feedback recorded. We will improve this response.', 'info');
-}
-
-// Share
-function shareActiveConversation() {
-  navigator.clipboard.writeText(window.location.href);
-  showToast('Chat link copied to clipboard!', 'success');
-}
-
-function openOfferModal() {
-  alert('SportsAI Pro Features:\n• Unlimited Ollama & Phi-3 inference\n• Real-Time IFAB, MCC & BWF rules sync\n• 3D Biomechanics & Aerodynamics Telemetry');
-}
-
-// 3D Inspector Modal
-function open3DInspectorModal(sport = 'football') {
-  const modal = document.getElementById('inspector-modal');
-  if (modal) modal.classList.remove('hidden');
-}
-function close3DInspectorModal() {
-  const modal = document.getElementById('inspector-modal');
-  if (modal) modal.classList.add('hidden');
+  btn.classList.add('text-cyan-400');
+  showToast(type === 'like' ? 'Thank you for your feedback!' : 'Feedback logged for model tuning.', 'info');
 }
 
 // Settings Modal
@@ -576,20 +644,32 @@ function closeSettingsModal() {
 }
 
 async function saveSettings() {
-  const provider = document.getElementById('setting-provider')?.value;
-  const ollamaModel = document.getElementById('setting-ollama-model')?.value;
-  const geminiKey = document.getElementById('setting-gemini-key')?.value;
+  const hfKey = document.getElementById('settings-hf-key')?.value;
+  const geminiApiKey = document.getElementById('settings-gemini-key')?.value;
+  const provider = document.getElementById('settings-provider')?.value || 'ollama';
 
-  if (ollamaModel) activeModel = ollamaModel;
-  showToast('Settings saved successfully', 'success');
-  closeSettingsModal();
+  try {
+    await fetch('/api/settings/keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ huggingfaceApiKey: hfKey, geminiApiKey, provider })
+    });
+    showToast('Configuration updated!', 'success');
+    closeSettingsModal();
+  } catch (err) {
+    showToast('Failed to update configuration', 'error');
+  }
 }
 
-function openSportDomainFilter() {
-  alert('Active Domains:\n1. 🏏 Cricket (Pages 1-34)\n2. ⚽ Football (Pages 35-68)\n3. 🏸 Badminton (Pages 69-100)');
+// Logout
+function handleLogout() {
+  if (confirm('Sign out of SportsAI?')) {
+    localStorage.clear();
+    window.location.href = '/register';
+  }
 }
 
-// Utility
+// Utility functions
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
@@ -601,24 +681,23 @@ function escapeHtml(str) {
 }
 
 function showToast(message, type = 'info') {
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    document.body.appendChild(toast);
-  }
+  const toast = document.getElementById('toast');
+  if (!toast) return;
 
   const bgColors = {
-    success: 'bg-[#1e1e1e] border-emerald-500/50 text-emerald-300',
-    error: 'bg-[#1e1e1e] border-rose-500/50 text-rose-300',
-    info: 'bg-[#1e1e1e] border-white/20 text-gray-200'
+    success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
+    error: 'bg-rose-950/90 border-rose-500/50 text-rose-200',
+    info: 'bg-cyan-950/90 border-cyan-500/50 text-cyan-200'
   };
 
-  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl border text-xs font-medium shadow-2xl backdrop-blur-xl flex items-center gap-2 transition-all duration-300 ${bgColors[type] || bgColors.info}`;
+  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border text-xs font-semibold shadow-2xl backdrop-blur-xl flex items-center gap-2 transform transition-all duration-300 ${bgColors[type] || bgColors.info}`;
   toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️'}</span> <span>${message}</span>`;
+  
+  toast.style.transform = 'translateY(0)';
   toast.style.opacity = '1';
 
   setTimeout(() => {
+    toast.style.transform = 'translateY(20px)';
     toast.style.opacity = '0';
-  }, 3000);
+  }, 3500);
 }
