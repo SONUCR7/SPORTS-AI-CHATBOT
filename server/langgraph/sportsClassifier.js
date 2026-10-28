@@ -4,7 +4,7 @@
  * Enforces zero-hallucination policy by preventing off-topic extrapolation.
  */
 
-export function classifySportsQuery(query) {
+export function classifySportsQuery(query, history = []) {
   const q = query.toLowerCase().trim();
 
   // Cricket Signals
@@ -116,8 +116,25 @@ export function classifySportsQuery(query) {
     };
   }
 
-  // If no sport signal is detected, check if it's general sports or out of scope
+  // If no direct sport keyword is detected, check if it's a conversational follow-up to prior session history
   if (maxMatches === 0) {
+    if (history && history.length > 0) {
+      const priorSportMsg = history.slice().reverse().find(m => ['cricket', 'football', 'badminton', 'multi_sports'].includes(m.sport));
+      if (priorSportMsg) {
+        // Conversational follow-ups (e.g. "give me an example", "why?", "tell me more", "how about vs ...")
+        const isFollowUpPattern = /^(give|show|tell|explain|what|how|why|can|could|please|another|more|example|difference|detail|clarify|elaborate|compare|continue|and|then|what about)/i.test(q);
+        if (isFollowUpPattern || q.length < 80) {
+          return {
+            sport: priorSportMsg.sport,
+            isSports: true,
+            isFollowUp: true,
+            confidence: 0.9,
+            scores: { cricket: priorSportMsg.sport === 'cricket' ? 1 : 0, football: priorSportMsg.sport === 'football' ? 1 : 0, badminton: priorSportMsg.sport === 'badminton' ? 1 : 0 }
+          };
+        }
+      }
+    }
+
     // Check general sport words
     const isGeneralSports = /sport|athlete|coach|referee|tournament|trophy|match|stadium|championship|olympic/i.test(q);
     if (isGeneralSports) {

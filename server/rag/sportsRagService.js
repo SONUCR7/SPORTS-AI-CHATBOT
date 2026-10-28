@@ -147,25 +147,18 @@ class SportsRagService {
       }
     });
 
-    // Sort by score descending
+    // Sort by score descending (only pages with score > 0.5)
     const sortedIndices = Array.from(scores.entries())
+      .filter(entry => entry[1] > 0.5)
       .sort((a, b) => b[1] - a[1])
       .slice(0, topK)
       .map(entry => entry[0]);
 
-    // If query has no keyword matches, return high-yield summary pages based on detected sport
+    // Only return genuinely matched pages — never fabricate citations
     let finalPages = sortedIndices.map(idx => ({
       ...this.pages[idx],
       relevanceScore: Math.min(100, Math.round(scores.get(idx) * 6))
     }));
-
-    if (finalPages.length === 0) {
-      let fallbackSport = sportFilter || (hasCricket ? 'cricket' : hasFootball ? 'football' : hasBadminton ? 'badminton' : 'cricket');
-      finalPages = this.pages.filter(p => p.sport === fallbackSport).slice(0, topK).map(p => ({
-        ...p,
-        relevanceScore: 75
-      }));
-    }
 
     return finalPages.map(p => ({
       pageNumber: p.page,

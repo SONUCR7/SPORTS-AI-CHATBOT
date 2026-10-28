@@ -40,8 +40,8 @@ export class SportsGraphPipeline {
       finalResponse: null
     };
 
-    // Step 1: Sports Scope & Intent Classification Node
-    state.classification = classifySportsQuery(state.query);
+    // Step 1: Sports Scope & Intent Classification Node (with history for follow-ups)
+    state.classification = classifySportsQuery(state.query, state.history);
 
     // Guardrail Check: If off-topic, short-circuit to refusal
     if (!state.classification.isSports) {

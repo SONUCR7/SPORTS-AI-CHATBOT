@@ -4,6 +4,8 @@
  * Enforces zero-hallucination prompting and fact grounding.
  */
 
+import { ollamaService } from './ollamaService.js';
+
 class LLMService {
   constructor() {
     this.defaultProvider = process.env.LLM_PROVIDER || 'ollama';
@@ -21,20 +23,21 @@ class LLMService {
   }) {
     const selectedProvider = provider || process.env.LLM_PROVIDER || 'ollama';
 
-    // 1. Ollama (Default: Free & Powerful Local Model - Phi-3)
+    // 1. Ollama (Default: Free & Powerful Local Model - Phi-3 Mini Primary, Qwen Secondary)
     if (selectedProvider === 'ollama' || !provider) {
-      const host = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
       const targetModel = model || process.env.OLLAMA_MODEL || 'phi3:latest';
       try {
-        const response = await this._callOllama({
-          host,
-          model: targetModel,
-          systemPrompt,
-          userPrompt,
-          temperature
+        const result = await ollamaService.chatCompletion({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          preferredModel: targetModel,
+          temperature,
+          numPredict: 500
         });
-        if (response && response.trim().length > 20) {
-          const trimmed = response.trim();
+        if (result.content && result.content.trim().length > 20) {
+          let trimmed = result.content.trim();
           if (!trimmed.includes('↳') && !trimmed.includes('Want to learn more?')) {
             return this._appendFollowUpChips(trimmed, sport);
           }

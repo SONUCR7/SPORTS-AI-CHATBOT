@@ -169,27 +169,19 @@
         <div class="relative ml-2">
           <button onclick="toggleModelDropdown()" id="header-model-btn" class="text-xs font-semibold px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 transition">
             <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-            <span id="header-model-label">Ollama (Phi-3)</span>
+            <span id="header-model-label">Phi-3 Mini (Ollama)</span>
             <span class="text-[10px] text-cyan-400">▼</span>
           </button>
           
           <div id="model-dropdown" class="hidden absolute left-0 top-10 w-64 bg-[#101624] border border-white/15 rounded-2xl shadow-2xl p-2 z-40 text-xs backdrop-blur-xl">
             <div class="px-2 py-1 text-[10px] uppercase font-bold text-gray-400 tracking-wider">Select Intelligence Model</div>
             <button onclick="selectModel('phi3:latest')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-cyan-500/15 text-cyan-300 flex items-center justify-between font-medium">
-              <span>🦙 Ollama (Phi-3 Mini 3.8B)</span>
-              <span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200">Recommended</span>
+              <span>🦙 Phi-3 Mini (3.8B)</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200">Primary</span>
             </button>
-            <button onclick="selectModel('qwen3:4b')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-purple-300 flex items-center justify-between">
-              <span>🧠 Ollama (Qwen-3 4B)</span>
-              <span class="text-[9px] text-gray-400">Local</span>
-            </button>
-            <button onclick="selectModel('SportsGemini 3.8 RAG')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-emerald-300 flex items-center justify-between">
-              <span>✨ SportsGemini 1.5 Flash</span>
-              <span class="text-[9px] text-gray-400">Cloud</span>
-            </button>
-            <button onclick="selectModel('Hugging Face SportsLLM')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/5 text-amber-300 flex items-center justify-between">
-              <span>🤗 Hugging Face SportsLLM</span>
-              <span class="text-[9px] text-gray-400">HF Inference</span>
+            <button onclick="selectModel('qwen3:4b')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-purple-500/15 text-purple-300 flex items-center justify-between">
+              <span>🧠 Qwen-3 (4B)</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200">Secondary</span>
             </button>
           </div>
         </div>
@@ -308,14 +300,20 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
           </button>
 
-          <button type="submit" id="chat-send-btn" class="p-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-black font-bold transition shadow-md shadow-cyan-500/25">
+          <button type="submit" id="chat-send-btn" title="Send message" class="p-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-black font-bold transition shadow-md shadow-cyan-500/25">
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+          <button type="button" id="chat-stop-btn" onclick="stopGeneration()" title="Stop Generation" class="hidden p-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-300 font-bold transition shadow-md shadow-rose-500/25 animate-pulse">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
           </button>
         </form>
 
         <div class="flex items-center justify-between text-[11px] text-gray-400 px-3 pt-1.5">
           <span>Grounded in 100-Page Sports Compendium (MCC • IFAB • BWF)</span>
-          <span class="text-cyan-400/90 font-medium">Ollama Phi-3 + LangGraph Active</span>
+          <span id="bottom-status-indicator" class="text-cyan-400/90 font-medium flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span id="bottom-status-text">Phi-3 Mini (Ollama) Active</span>
+          </span>
         </div>
       </div>
     </div>

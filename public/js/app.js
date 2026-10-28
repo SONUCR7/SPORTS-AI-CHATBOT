@@ -1,11 +1,14 @@
 /**
- * SportsAI Main Client Application Logic (v3.0)
- * 3D Interactive Cyber-Sports Arena with ChatGPT-like Intelligence:
- * - Real-time Three.js 3D sports objects (bat, ball, football, shuttlecock with hover physics)
- * - Ollama Phi-3 Mini (3.8B) local LLM integration + LangGraph RAG reasoning
- * - Dynamic session auto-naming in PostgreSQL / SQLite
- * - Interactive ChatGPT follow-up suggestion chips (↳)
- * - Message action controls (Like, Dislike, Copy, Read Aloud, 3D Inspect, Grounding Verification)
+ * SportsAI Main Client Application Logic (v3.8)
+ * Preserves the Original SportsAI 3D Interface (Images 3 & 4)
+ * Connected to Local Ollama AI:
+ * - Microsoft Phi-3 Mini (3.8B) as Primary Default Model
+ * - Qwen3 4B as Secondary Fallback Model
+ * - Live Token Streaming with Real-Time Markdown Rendering
+ * - "Thinking.........." State & Stop Generation Button
+ * - Genuine 100-Page Compendium Citations Drawer (Zero-Hallucination)
+ * - Conversational Memory for Multi-Turn Dialogues & Follow-up Suggestions
+ * - Text-to-Speech (Listen), Copy to Clipboard, 3D Sports Equipment Modal
  */
 
 let currentUser = null;
@@ -14,6 +17,8 @@ let activeSessions = [];
 let activeModel = 'phi3:latest';
 let activeQueryMode = 'chat';
 let isSidebarOpen = true;
+let currentAbortController = null;
+let isGenerating = false;
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
@@ -36,6 +41,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Check Ollama AI Connectivity and Installed Models
+  await checkOllamaStatus();
+
   // Load user sessions from database
   await loadUserSessions();
 
@@ -55,6 +63,44 @@ function setupTextareaAutoResize() {
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 140) + 'px';
   });
+}
+
+// Check Ollama Service & Installed Models
+async function checkOllamaStatus() {
+  try {
+    const res = await fetch('/api/chat/ollama/status');
+    const data = await res.json();
+
+    if (data.connected) {
+      if (data.primaryAvailable) {
+        activeModel = 'phi3:latest';
+        updateModelUI('Phi-3 Mini (Ollama)');
+      } else if (data.secondaryAvailable) {
+        activeModel = 'qwen3:4b';
+        updateModelUI('Qwen-3 (Ollama)');
+        showToast('Phi-3 not found in Ollama. Active model: Qwen-3', 'info');
+      } else {
+        updateModelUI('Ollama Offline Models');
+        showToast('Neither phi3 nor qwen3:4b found. Run: "ollama pull phi3"', 'error');
+      }
+    } else {
+      updateModelUI('Ollama Disconnected');
+      showToast('Ollama is not running. Please start Ollama on port 11434', 'error');
+    }
+  } catch (err) {
+    console.warn('Ollama status check failed:', err);
+    updateModelUI('Phi-3 Mini (Ollama)');
+  }
+}
+
+function updateModelUI(label) {
+  const headerLabel = document.getElementById('header-model-label');
+  if (headerLabel) headerLabel.innerText = label;
+
+  const bottomLabel = document.getElementById('bottom-status-text');
+  if (bottomLabel && !isGenerating) {
+    bottomLabel.innerText = `${label} Active`;
+  }
 }
 
 // Sidebar Toggle
@@ -105,7 +151,6 @@ async function loadUserSessions(autoSwitch = true) {
       return;
     }
 
-    // Determine active session
     const lastSessionId = localStorage.getItem('sportsai_active_session');
     if (lastSessionId && activeSessions.some(s => s.id === lastSessionId)) {
       switchSession(lastSessionId);
@@ -119,13 +164,12 @@ async function loadUserSessions(autoSwitch = true) {
   }
 }
 
-// Render Session History in Sidebar
 function renderSessionList() {
   const listEl = document.getElementById('session-history-list');
   if (!listEl) return;
 
   if (activeSessions.length === 0) {
-    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No saved sports chats yet.</div>`;
+    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No sports chats yet. Start asking!</div>`;
     return;
   }
 
@@ -158,17 +202,16 @@ async function switchSession(sessionId) {
     document.getElementById('session-title-text').innerText = activeSess.title;
   }
 
-  // Fetch messages from DB
   try {
     const res = await fetch(`/api/chat/sessions/${sessionId}/messages`);
     const data = await res.json();
     renderMessages(data.messages || []);
   } catch (err) {
-    console.error('Failed to fetch session messages:', err);
+    console.error('Failed to load session messages:', err);
   }
 }
 
-// Start New Chat Session (ChatGPT / Gemini Style)
+// Start New Chat Session
 async function startNewChatSession() {
   if (!currentUser) return;
 
@@ -177,13 +220,12 @@ async function startNewChatSession() {
   const messagesList = document.getElementById('messages-list');
   const hasMessages = messagesList && messagesList.children.length > 0;
 
-  // If already on an empty "New chat", keep and focus it without creating duplicates
   if (currentSess && (currentSess.title === 'New chat' || currentSess.title === 'New Tri-Sport Conversation') && !hasMessages) {
     if (emptyState) emptyState.classList.remove('hidden');
     if (messagesList) messagesList.innerHTML = '';
     const titleEl = document.getElementById('session-title-text');
     if (titleEl) titleEl.innerText = 'New chat';
-    const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
+    const input = document.getElementById('chat-input');
     if (input) {
       input.value = '';
       input.focus();
@@ -206,12 +248,12 @@ async function startNewChatSession() {
       activeSessions = activeSessions.filter(s => s.title !== 'New chat' || s.id === data.session.id);
       activeSessions.unshift(data.session);
       await switchSession(data.session.id);
-      
+
       const titleEl = document.getElementById('session-title-text');
       if (titleEl) titleEl.innerText = 'New chat';
       if (emptyState) emptyState.classList.remove('hidden');
       if (messagesList) messagesList.innerHTML = '';
-      const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
+      const input = document.getElementById('chat-input');
       if (input) {
         input.value = '';
         input.focus();
@@ -268,7 +310,16 @@ async function deleteSession(e, sessionId) {
   }
 }
 
-// Render Messages in 3D Arena with ChatGPT Features
+/**
+ * Render Messages with Original SportsAI Design (Images 3 & 4)
+ * Features:
+ * - Gradient user prompt bubble
+ * - Sport Badge + 100% Grounded badge
+ * - Translucent Glass Panel markdown card
+ * - Expandable Verified Compendium Citations Drawer
+ * - Interactive Follow-up Suggestion Chips (↳)
+ * - Tool buttons: Listen, Copy, 3D Equipment
+ */
 function renderMessages(messages) {
   const emptyState = document.getElementById('empty-state');
   const messagesList = document.getElementById('messages-list');
@@ -283,40 +334,35 @@ function renderMessages(messages) {
 
   messagesList.innerHTML = messages.map(msg => {
     if (msg.role === 'user') {
-      // User Message (Right-aligned user bubble)
       return `
         <div class="flex justify-end mb-4">
-          <div class="user-bubble">
+          <div class="max-w-2xl bg-gradient-to-r from-cyan-900/40 to-indigo-900/40 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-white text-xs sm:text-sm shadow-md">
             ${escapeHtml(msg.content)}
           </div>
         </div>
       `;
     } else {
-      // Assistant Message (Translucent cyber-card with full markdown & ChatGPT actions)
-      let content = msg.content || '';
-      
-      // Parse markdown
+      const sportBadge = msg.sport === 'cricket' ? '🏏 Cricket' :
+                         msg.sport === 'football' ? '⚽ Football' :
+                         msg.sport === 'badminton' ? '🏸 Badminton' : '⚡ Multi-Sports';
+
+      const citations = Array.isArray(msg.citations) ? msg.citations : [];
       let parsedHtml = '';
       try {
-        parsedHtml = marked.parse(content);
+        parsedHtml = marked.parse(msg.content || '');
       } catch (e) {
-        parsedHtml = escapeHtml(content);
+        parsedHtml = escapeHtml(msg.content || '');
       }
 
-      const sportIcon = msg.sport === 'cricket' ? '🏏' : msg.sport === 'football' ? '⚽' : msg.sport === 'badminton' ? '🏸' : '⚡';
-      const groundingScore = msg.grounding_score || 95;
-
-      // Check for follow-up suggestions (↳ format)
+      // Extract clickable follow-up suggestion chips (↳ format)
       let followUpHtml = '';
-      if (content.includes('↳')) {
-        const lines = content.split('\n');
+      if (msg.content && msg.content.includes('↳')) {
+        const lines = msg.content.split('\n');
         const chips = [];
         lines.forEach(l => {
           if (l.includes('↳')) {
             const clean = l.replace(/^.*↳\s*/, '').replace(/[\[\]*]/g, '').trim();
-            if (clean && clean.length > 2) {
-              chips.push(clean);
-            }
+            if (clean && clean.length > 2) chips.push(clean);
           }
         });
 
@@ -328,8 +374,8 @@ function renderMessages(messages) {
               </div>
               <div class="flex flex-wrap gap-1.5">
                 ${chips.map(chip => `
-                  <button onclick="applySuggestion('${escapeHtml(chip).replace(/'/g, "\\'")}')" class="suggestion-chip">
-                    <span>↳</span> <span>${escapeHtml(chip)}</span>
+                  <button onclick="applySuggestion('${escapeHtml(chip).replace(/'/g, "\\'")}')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-200 border border-white/10 hover:border-cyan-500/30 text-xs text-gray-300 transition flex items-center gap-1.5">
+                    <span class="text-cyan-400">↳</span> <span>${escapeHtml(chip)}</span>
                   </button>
                 `).join('')}
               </div>
@@ -338,59 +384,63 @@ function renderMessages(messages) {
         }
       }
 
-      return `
-        <div class="flex flex-col mb-4">
-          <div class="assistant-card">
-            <!-- Header Bar -->
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-              <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-md bg-gradient-to-tr from-cyan-400 via-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs shadow-md">
-                  <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
-                </div>
-                <span class="font-bold text-xs text-white">SportsAI</span>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Ollama Phi-3</span>
-                <span class="text-xs">${sportIcon}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>${groundingScore}% Grounded</span>
-                </span>
-              </div>
-            </div>
+      const groundingText = citations.length > 0 ? '100% Grounded (Zero Hallucination)' : 'Verified Sports Rules (MCC • IFAB • BWF)';
 
-            <!-- Markdown Content -->
-            <div class="markdown-body">
-              ${parsedHtml}
-            </div>
+      return `
+        <div class="flex flex-col space-y-2 mb-6">
+          <!-- Header Badges (Exact design from Images 3 & 4) -->
+          <div class="flex items-center gap-2 text-xs">
+            <span class="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 font-bold text-gray-200">${sportBadge}</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1">
+              <span>✓</span> <span>${groundingText}</span>
+            </span>
+          </div>
+
+          <!-- Content Card (Exact translucent card from Images 3 & 4) -->
+          <div class="glass-panel rounded-2xl border border-white/10 p-5 sm:p-6 text-xs sm:text-sm text-gray-200 leading-relaxed shadow-xl markdown-body relative">
+            ${parsedHtml}
+
+            <!-- Expandable Citations Drawer if genuine compendium citations exist -->
+            ${citations.length > 0 ? `
+              <div class="mt-4 pt-4 border-t border-white/10">
+                <details class="cursor-pointer">
+                  <summary class="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 select-none">
+                    <span>📚</span> <span>View Verified Compendium Citations (${citations.length} Sources Grounded)</span>
+                  </summary>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 pt-2">
+                    ${citations.map(c => `
+                      <div class="p-3 rounded-xl bg-white/5 border border-white/10 text-xs">
+                        <div class="font-bold text-white flex items-center justify-between">
+                          <span>Page ${c.page}: ${escapeHtml(c.title)}</span>
+                          <span class="text-[10px] text-cyan-400 font-mono">${c.relevanceScore || 95}% Match</span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1 italic leading-snug">"${escapeHtml(c.quote)}"</div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </details>
+              </div>
+            ` : ''}
 
             <!-- Follow-up chips -->
             ${followUpHtml}
 
-            <!-- ChatGPT Action Bar -->
-            <div class="flex items-center justify-between pt-3 mt-3 border-t border-white/10 text-xs">
-              <div class="flex items-center gap-1">
-                <button onclick="handleFeedback(this, 'like')" title="Helpful" class="msg-action-btn">
-                  <span>👍</span>
+            <!-- Bottom Tool Buttons (Exact buttons from Images 3 & 4) -->
+            <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
+              <div class="flex items-center gap-2">
+                <button onclick="speakText(this)" data-text="${escapeHtml((msg.content || '').replace(/[#*`|]/g, ''))}" title="Read Aloud" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
+                  <span>🔊</span> Listen
                 </button>
-                <button onclick="handleFeedback(this, 'dislike')" title="Not helpful" class="msg-action-btn">
-                  <span>👎</span>
+                <button onclick="copyToClipboard(this)" data-text="${escapeHtml(msg.content || '')}" title="Copy text" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
+                  <span>📋</span> Copy
                 </button>
-                <button onclick="copyToClipboard(this)" data-text="${escapeHtml(content)}" title="Copy response" class="msg-action-btn">
-                  <span>📋</span> <span>Copy</span>
-                </button>
-                <button onclick="speakText(this)" data-text="${escapeHtml(content.replace(/[#*`|]/g, ''))}" title="Read aloud" class="msg-action-btn">
-                  <span>🔊</span> <span>Listen</span>
-                </button>
-                <button onclick="open3DInspectorModal('${msg.sport || 'cricket'}')" title="Inspect in 3D" class="msg-action-btn text-cyan-400">
-                  <span>🌐</span> <span>3D View</span>
+                <button onclick="open3DInspectorModal('${msg.sport || 'cricket'}')" title="Inspect 3D Equipment" class="px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 flex items-center gap-1 transition hover:bg-cyan-900/50">
+                  <span>🌐</span> 3D Equipment
                 </button>
               </div>
-
-              <button onclick="openCompendiumModal()" title="View 100-page verified RAG citations" class="text-[11px] text-cyan-400/80 hover:text-cyan-300 transition flex items-center gap-1">
-                <span>📖</span> <span>Compendium Verified</span>
-              </button>
+              <span class="text-[10px] text-gray-500 font-mono">${citations.length > 0 ? 'Grounded: 100-pg Compendium' : 'Grounded: MCC • IFAB • BWF'}</span>
             </div>
+
           </div>
         </div>
       `;
@@ -436,7 +486,40 @@ function handleTextareaKeyDown(e) {
   }
 }
 
-// Send Message via LangGraph + Ollama Phi-3 Pipeline
+// Stop Generation Handler
+function stopGeneration() {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
+  setGeneratingState(false);
+  showToast('Generation stopped', 'info');
+}
+
+function setGeneratingState(generating) {
+  isGenerating = generating;
+  const sendBtn = document.getElementById('chat-send-btn');
+  const stopBtn = document.getElementById('chat-stop-btn');
+  const bottomStatusText = document.getElementById('bottom-status-text');
+
+  if (generating) {
+    if (sendBtn) sendBtn.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
+    if (bottomStatusText) bottomStatusText.innerText = 'Thinking..........';
+  } else {
+    if (sendBtn) sendBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    if (bottomStatusText) {
+      const modelLabel = document.getElementById('header-model-label')?.innerText || 'Phi-3 Mini (Ollama)';
+      bottomStatusText.innerText = `${modelLabel} Active`;
+    }
+  }
+}
+
+/**
+ * Send Message via Streaming SSE (Ollama Phi-3 Mini Primary, Qwen Secondary)
+ * Streams token by token with live markdown rendering into the original SportsAI card.
+ */
 async function sendChatMessage(query) {
   if (!currentSessionId) {
     await startNewChatSession();
@@ -449,21 +532,21 @@ async function sendChatMessage(query) {
   // 1. Immediately append user bubble
   const userHtml = `
     <div class="flex justify-end mb-4">
-      <div class="user-bubble">
+      <div class="max-w-2xl bg-gradient-to-r from-cyan-900/40 to-indigo-900/40 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-white text-xs sm:text-sm shadow-md">
         ${escapeHtml(query)}
       </div>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', userHtml);
 
-  // 2. Typing indicator with animated sports icons
+  // 2. Typing indicator with "Thinking.........."
   const typingId = `typing_${Date.now()}`;
   const typingHtml = `
     <div id="${typingId}" class="flex items-center gap-2.5 text-xs text-cyan-300 py-3 px-4 glass-panel rounded-2xl border border-cyan-500/20 w-fit mb-4 shadow-lg backdrop-blur-md">
       <span class="animate-bounce">🏏</span>
       <span class="animate-bounce delay-100">⚽</span>
       <span class="animate-bounce delay-200">🏸</span>
-      <span class="text-gray-300 ml-1 font-medium tracking-wide">Thinking...</span>
+      <span class="text-gray-300 ml-1 font-medium tracking-wide">Thinking..........</span>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', typingHtml);
@@ -471,48 +554,166 @@ async function sendChatMessage(query) {
   const container = document.getElementById('messages-container');
   if (container) container.scrollTop = container.scrollHeight;
 
+  // Toggle buttons to Show Stop Generation button
+  setGeneratingState(true);
+  currentAbortController = new AbortController();
+
+  let accumulatedText = '';
+  let citations = [];
+  let detectedSport = 'cricket';
+  let liveCardContainer = null;
+  let markdownTargetEl = null;
+
   try {
-    const res = await fetch('/api/chat/message', {
+    const response = await fetch('/api/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: currentSessionId,
         userId: currentUser.id,
         query,
-        llmOptions: {
-          provider: 'ollama',
-          model: activeModel
-        }
-      })
+        model: activeModel,
+        sportPreference: currentUser.preferred_sport || 'all'
+      }),
+      signal: currentAbortController.signal
     });
 
-    const data = await res.json();
-    document.getElementById(typingId)?.remove();
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to process message');
+    if (!response.ok) {
+      throw new Error(`Server returned status ${response.status}`);
     }
 
-    // Dynamic smart title update (Gemini / ChatGPT / Claude style)
-    if (data.sessionTitle) {
-      const sess = activeSessions.find(s => s.id === currentSessionId);
-      if (sess) {
-        sess.title = data.sessionTitle;
-      }
-      const titleEl = document.getElementById('session-title-text');
-      if (titleEl) {
-        titleEl.innerText = data.sessionTitle;
-      }
-      renderSessionList();
-    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
 
-    // Refresh entire session from DB to render formatted response & action controls
-    await switchSession(currentSessionId);
-    await loadUserSessions(false);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop(); // keep partial
+
+      for (const rawEvent of events) {
+        if (!rawEvent.trim()) continue;
+
+        let eventType = 'chunk';
+        let dataStr = '';
+
+        const lines = rawEvent.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            dataStr = line.slice(6).trim();
+          }
+        }
+
+        if (!dataStr) continue;
+
+        try {
+          const payload = JSON.parse(dataStr);
+
+          // Handle Metadata Event
+          if (eventType === 'meta') {
+            detectedSport = payload.sport || 'cricket';
+            citations = payload.citations || [];
+          }
+
+          // Handle Fallback Event
+          else if (eventType === 'fallback') {
+            showToast(`Switched model to ${payload.to} (${payload.reason || 'Fallback'})`, 'info');
+            updateModelUI(payload.to.includes('qwen') ? 'Qwen-3 (Ollama)' : payload.to);
+          }
+
+          // Handle Smart Title Event
+          else if (eventType === 'title') {
+            if (payload.title) {
+              const sess = activeSessions.find(s => s.id === currentSessionId);
+              if (sess) sess.title = payload.title;
+              const titleEl = document.getElementById('session-title-text');
+              if (titleEl) titleEl.innerText = payload.title;
+              renderSessionList();
+            }
+          }
+
+          // Handle Streaming Token Chunk
+          else if (eventType === 'chunk') {
+            const token = payload.token || '';
+            accumulatedText += token;
+
+            // Remove typing indicator once first token arrives
+            const typingEl = document.getElementById(typingId);
+            if (typingEl) typingEl.remove();
+
+            // Create live assistant card container if not already created
+            if (!liveCardContainer) {
+              const cardId = `live_card_${Date.now()}`;
+              const sportBadge = detectedSport === 'cricket' ? '🏏 Cricket' :
+                                 detectedSport === 'football' ? '⚽ Football' :
+                                 detectedSport === 'badminton' ? '🏸 Badminton' : '⚡ Multi-Sports';
+              const groundingText = citations.length > 0 ? '100% Grounded (Zero Hallucination)' : 'Verified Sports Rules (MCC • IFAB • BWF)';
+
+              const cardHtml = `
+                <div id="${cardId}" class="flex flex-col space-y-2 mb-6">
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 font-bold text-gray-200">${sportBadge}</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>✓</span> <span>${groundingText}</span>
+                    </span>
+                  </div>
+                  <div class="glass-panel rounded-2xl border border-white/10 p-5 sm:p-6 text-xs sm:text-sm text-gray-200 leading-relaxed shadow-xl markdown-body relative">
+                    <div class="live-stream-content"></div>
+                  </div>
+                </div>
+              `;
+              messagesList.insertAdjacentHTML('beforeend', cardHtml);
+              liveCardContainer = document.getElementById(cardId);
+              markdownTargetEl = liveCardContainer.querySelector('.live-stream-content');
+            }
+
+            // Live Markdown Render
+            if (markdownTargetEl) {
+              try {
+                markdownTargetEl.innerHTML = marked.parse(accumulatedText);
+              } catch (e) {
+                markdownTargetEl.innerText = accumulatedText;
+              }
+            }
+
+            if (container) container.scrollTop = container.scrollHeight;
+          }
+
+          // Handle Done Event
+          else if (eventType === 'done') {
+            document.getElementById(typingId)?.remove();
+            setGeneratingState(false);
+
+            // Re-render full session to ensure citations drawer and action buttons are bound
+            await switchSession(currentSessionId);
+            await loadUserSessions(false);
+          }
+
+        } catch (e) {
+          // ignore json parse error
+        }
+      }
+    }
 
   } catch (err) {
     document.getElementById(typingId)?.remove();
-    showToast(err.message, 'error');
+    setGeneratingState(false);
+
+    if (err.name === 'AbortError') {
+      showToast('Generation stopped', 'info');
+      await switchSession(currentSessionId);
+    } else {
+      console.error('Chat error:', err);
+      showToast(err.message || 'Error communicating with AI engine', 'error');
+    }
+  } finally {
+    setGeneratingState(false);
+    currentAbortController = null;
   }
 }
 
@@ -544,18 +745,14 @@ function toggleModelDropdown() {
 
 function selectModel(modelName) {
   activeModel = modelName;
-  const label = modelName.includes('phi3') ? 'Ollama (Phi-3)' :
-                modelName.includes('qwen') ? 'Ollama (Qwen-3)' :
-                modelName.includes('Gemini') ? 'Gemini 1.5' :
-                modelName.includes('Hugging') ? 'SportsLLM' : modelName;
+  const label = modelName.includes('phi3') ? 'Phi-3 Mini (Ollama)' :
+                modelName.includes('qwen') ? 'Qwen-3 (Ollama)' : modelName;
 
-  const headerLabel = document.getElementById('header-model-label');
-  if (headerLabel) headerLabel.innerText = label;
-
+  updateModelUI(label);
   const dd = document.getElementById('model-dropdown');
   if (dd) dd.classList.add('hidden');
 
-  showToast(`Active Intelligence: ${label}`, 'info');
+  showToast(`Active Model: ${label}`, 'info');
 }
 
 // Sport Filter Selection
@@ -601,7 +798,7 @@ function speakText(btn) {
 
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-    btn.innerHTML = `<span>🔊</span> <span>Listen</span>`;
+    btn.innerHTML = `<span>🔊</span> Listen`;
     return;
   }
 
@@ -610,10 +807,10 @@ function speakText(btn) {
   utterance.pitch = 1.0;
 
   utterance.onstart = () => {
-    btn.innerHTML = `<span>⏹️</span> <span>Stop</span>`;
+    btn.innerHTML = `<span>⏹️</span> Stop`;
   };
   utterance.onend = () => {
-    btn.innerHTML = `<span>🔊</span> <span>Listen</span>`;
+    btn.innerHTML = `<span>🔊</span> Listen`;
   };
 
   window.speechSynthesis.speak(utterance);
@@ -625,14 +822,8 @@ function copyToClipboard(btn) {
   if (!text) return;
   navigator.clipboard.writeText(text);
   const oldHtml = btn.innerHTML;
-  btn.innerHTML = `<span>✓</span> <span>Copied!</span>`;
+  btn.innerHTML = `<span>✓</span> Copied!`;
   setTimeout(() => btn.innerHTML = oldHtml, 2000);
-}
-
-// Thumbs feedback
-function handleFeedback(btn, type) {
-  btn.classList.add('text-cyan-400');
-  showToast(type === 'like' ? 'Thank you for your feedback!' : 'Feedback logged for model tuning.', 'info');
 }
 
 // Settings Modal
@@ -646,13 +837,13 @@ function closeSettingsModal() {
 async function saveSettings() {
   const hfKey = document.getElementById('settings-hf-key')?.value;
   const geminiApiKey = document.getElementById('settings-gemini-key')?.value;
-  const provider = document.getElementById('settings-provider')?.value || 'ollama';
+  const preferredSport = document.getElementById('settings-sport-pref')?.value;
 
   try {
     await fetch('/api/settings/keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ huggingfaceApiKey: hfKey, geminiApiKey, provider })
+      body: JSON.stringify({ huggingfaceApiKey: hfKey, geminiApiKey })
     });
     showToast('Configuration updated!', 'success');
     closeSettingsModal();
