@@ -14,8 +14,7 @@ data/*.sqlite-journal
 data/*.sqlite-wal
 data/*.sqlite-shm
 
-# Model weights & caches (downloaded/trained locally)
-models/*.pt
+# Model weights & caches (large checkpoints >100MB)
 models/*.bin
 models/*.onnx
 __pycache__/
