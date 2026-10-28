@@ -113,7 +113,7 @@ I can also provide a ↳ [specialized breakdown or tactical guide].`;
 TOPIC/SPORT: ${state.classification.sport.toUpperCase()}
 
 VERIFIED COMPENDIUM KNOWLEDGE BASE:
-${state.ragChunks.map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content}\n${c.stats && Object.keys(c.stats).length > 0 ? `STATS: ${JSON.stringify(c.stats)}` : ''}`).join('\n\n')}
+${state.ragChunks.map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content.slice(0, 320)}...\n${c.stats && Object.keys(c.stats).length > 0 ? `STATS: ${JSON.stringify(c.stats)}` : ''}`).join('\n\n')}
 
 ${state.liveContext ? `LIVE CONTEXT:\n${JSON.stringify(state.liveContext, null, 2)}` : ''}
 

@@ -212,7 +212,7 @@ class LLMService {
           stream: false,
           options: {
             temperature: temperature !== undefined ? temperature : 0.3,
-            num_predict: 800
+            num_predict: 450
           }
         }),
         signal: controller.signal
