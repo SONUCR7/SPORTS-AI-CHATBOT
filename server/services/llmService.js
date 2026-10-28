@@ -34,7 +34,11 @@ class LLMService {
           temperature
         });
         if (response && response.trim().length > 20) {
-          return response.trim();
+          const trimmed = response.trim();
+          if (!trimmed.includes('↳') && !trimmed.includes('Want to learn more?')) {
+            return this._appendFollowUpChips(trimmed, sport);
+          }
+          return trimmed;
         }
       } catch (e) {
         console.warn(`[LLMService] Ollama (${targetModel}) call failed: ${e.message}, falling back...`);
@@ -212,7 +216,7 @@ class LLMService {
           stream: false,
           options: {
             temperature: temperature !== undefined ? temperature : 0.3,
-            num_predict: 280
+            num_predict: 350
           }
         }),
         signal: controller.signal
@@ -227,6 +231,20 @@ class LLMService {
       clearTimeout(timeout);
       throw err;
     }
+  }
+
+  _appendFollowUpChips(reply, sport) {
+    let suggestions = '';
+    if (sport === 'cricket') {
+      suggestions = `\n\n---\nWant to learn more?\n↳ How does the DRS review system work?\n↳ What is an LBW dismissal (Law 36)?\n↳ Explain Duckworth-Lewis-Stern (DLS) method`;
+    } else if (sport === 'football') {
+      suggestions = `\n\n---\nWant to learn more?\n↳ What is the offside rule (Law 11)?\n↳ How does VAR review work in football?\n↳ Modern football tactics: Gegenpressing vs Tiki-Taka`;
+    } else if (sport === 'badminton') {
+      suggestions = `\n\n---\nWant to learn more?\n↳ Official BWF rally scoring and court dimensions\n↳ What is the service fault rule in badminton?\n↳ Smash biomechanics and defensive footwork`;
+    } else {
+      suggestions = `\n\n---\nWant to learn more?\n↳ Cricket rules for beginners\n↳ What is the offside rule in football?\n↳ What are overs and wickets in cricket?\nI can also provide a ↳ tactical breakdown of modern formations.`;
+    }
+    return reply.trim() + suggestions;
   }
 
   /**
