@@ -96,6 +96,26 @@ export function classifySportsQuery(query) {
 
   const maxMatches = Math.max(cricketMatches, footballMatches, badmintonMatches);
 
+  // Check for multi-sport comparative queries (e.g. cricket vs football)
+  const matchedSports = [];
+  if (cricketMatches > 0) matchedSports.push('cricket');
+  if (footballMatches > 0) matchedSports.push('football');
+  if (badmintonMatches > 0) matchedSports.push('badminton');
+
+  if (matchedSports.length > 1) {
+    return {
+      sport: 'multi_sports',
+      isSports: true,
+      matchedSports,
+      confidence: 0.95,
+      scores: {
+        cricket: cricketMatches,
+        football: footballMatches,
+        badminton: badmintonMatches
+      }
+    };
+  }
+
   // If no sport signal is detected, check if it's general sports or out of scope
   if (maxMatches === 0) {
     // Check general sport words

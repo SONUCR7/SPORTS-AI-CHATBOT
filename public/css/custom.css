@@ -1,107 +1,194 @@
-/* SportsAI Custom Styles & Glassmorphism */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ChatGPT Authentic Dark Theme & SportsAI Styling */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-dark: #0a0e17;
-  --bg-card: rgba(18, 24, 38, 0.75);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --cyan-glow: #00f2fe;
-  --purple-glow: #8b5cf6;
-  --indigo-glow: #6366f1;
+  --chatgpt-canvas: #212121;
+  --chatgpt-sidebar: #171717;
+  --chatgpt-surface: #2f2f2f;
+  --chatgpt-surface-hover: #383838;
+  --chatgpt-border: rgba(255, 255, 255, 0.08);
+  --chatgpt-text: #ececec;
+  --chatgpt-text-muted: #b4b4b4;
+  --chatgpt-user-bubble: #2f334d;
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--bg-dark);
-  color: #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--chatgpt-canvas);
+  color: var(--chatgpt-text);
+  overflow: hidden;
 }
 
 code, pre {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Glassmorphism Panels */
-.glass-panel {
-  background: rgba(18, 24, 38, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* ChatGPT Sidebar */
+.chatgpt-sidebar {
+  background-color: var(--chatgpt-sidebar);
+  border-right: 1px solid var(--chatgpt-border);
 }
 
-.glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-panel-hover:hover {
-  background: rgba(24, 32, 50, 0.85);
-  border-color: rgba(0, 242, 254, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px -10px rgba(0, 242, 254, 0.15);
-}
-
-/* Radiant Background Gradients */
-.gemini-bg-glow {
-  background: radial-gradient(circle at 50% 38%, rgba(37, 99, 235, 0.15) 0%, rgba(15, 23, 42, 0) 65%),
-              radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, rgba(10, 14, 23, 0) 50%);
-}
-
-/* Glowing text gradients */
-.text-gradient {
-  background: linear-gradient(135deg, #00f2fe 0%, #a855f7 50%, #6366f1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-gradient-gold {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Custom Scrollbars */
+/* Custom Scrollbars matching ChatGPT */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(10, 14, 23, 0.5);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 242, 254, 0.4);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Custom Markdown Table Styling */
-.markdown-body table {
+/* User Message Bubble */
+.user-bubble {
+  background-color: var(--chatgpt-user-bubble);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  color: #ffffff;
+  max-width: 80%;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Assistant Message Typography (Direct Canvas Render) */
+.assistant-prose {
+  color: #ececec;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.assistant-prose p {
+  margin-bottom: 0.9rem;
+}
+
+.assistant-prose h1, .assistant-prose h2, .assistant-prose h3, .assistant-prose h4 {
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.35;
+}
+
+.assistant-prose h3 {
+  font-size: 1.15rem;
+}
+
+.assistant-prose h4 {
+  font-size: 1.025rem;
+}
+
+.assistant-prose ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 0.9rem;
+  space-y: 0.4rem;
+}
+
+.assistant-prose ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.assistant-prose li {
+  margin-bottom: 0.35rem;
+}
+
+.assistant-prose strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Clean ChatGPT-Style Tables */
+.assistant-prose table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0;
+  margin: 1.25rem 0;
   border-radius: 0.75rem;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.02);
 }
-.markdown-body th {
-  background: rgba(30, 41, 59, 0.8);
+
+.assistant-prose th {
+  background-color: rgba(255, 255, 255, 0.07);
   padding: 0.75rem 1rem;
   text-align: left;
-  font-size: 0.8125rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #93c5fd;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
-.markdown-body td {
+
+.assistant-prose td {
   padding: 0.75rem 1rem;
-  font-size: 0.8125rem;
+  font-size: 0.85rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: #cbd5e1;
 }
-.markdown-body tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+
+.assistant-prose tr:hover td {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
-/* 3D Canvas Background */
+/* Suggestion chip links (Exact Picture 2 format) */
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.8125rem;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-chip:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Bottom Action Buttons Row (Exact Picture 2 format) */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Floating Input Box */
+.chatgpt-input-box {
+  background-color: var(--chatgpt-surface);
+  border: 1px solid var(--chatgpt-border);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+}
+
+.chatgpt-input-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* 3D Canvas Background - Only active in empty state or modal */
 #three-canvas-container {
   position: fixed;
   top: 0;
@@ -110,14 +197,17 @@ code, pre {
   height: 100vh;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.92;
+  opacity: 0.9;
+  transition: opacity 0.5s ease;
 }
 
-/* Pulse animation */
-@keyframes softPulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
+body.in-conversation #three-canvas-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
-.animate-soft-pulse {
-  animation: softPulse 6s ease-in-out infinite;
+
+/* Modals */
+.chatgpt-modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
 }

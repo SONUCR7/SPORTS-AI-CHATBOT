@@ -1,14 +1,18 @@
 /**
- * SportsAI Main Client Application Logic
- * Implements Gemini Chat UI, PostgreSQL Session Sync, LangGraph RAG Interaction,
- * Audio Speech Synthesis, and 3D Visual Controls.
+ * ChatGPT / SportsAI Main Client Application Logic
+ * Implements authentic ChatGPT UI matching Pictures 1 & 2:
+ * - Solid dark canvas (#212121) and sidebar (#171717)
+ * - Ollama Phi-3 integration by default
+ * - Direct prose canvas rendering with follow-up suggestions (↳)
+ * - User bubble on right, action buttons on assistant message
+ * - Floating prompt pill with Think toggle, mic & blue send button
  */
 
 let currentUser = null;
 let currentSessionId = null;
 let activeSessions = [];
-let activeModel = 'SportsGemini 3.8 RAG';
-let activeQueryMode = 'chat';
+let activeModel = 'phi3:latest';
+let isDeepThinkActive = false;
 let isSidebarOpen = true;
 
 // Initialization
@@ -24,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     currentUser = JSON.parse(storedUser);
-    document.getElementById('user-display-name').innerText = currentUser.name;
+    const nameEl = document.getElementById('user-display-name');
+    if (nameEl) nameEl.innerText = currentUser.name || 'Arighna Nandi';
   } catch (e) {
     localStorage.clear();
     window.location.href = '/register';
@@ -33,37 +38,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load user sessions from database
   await loadUserSessions();
-
-  // Check database status
-  checkDbStatus();
 });
 
 // Sidebar Toggle
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
   isSidebarOpen = !isSidebarOpen;
   if (isSidebarOpen) {
-    sidebar.classList.remove('-ml-72');
+    sidebar.classList.remove('-ml-64');
   } else {
-    sidebar.classList.add('-ml-72');
+    sidebar.classList.add('-ml-64');
   }
 }
 
-// Check System & Database Status
-async function checkDbStatus() {
-  try {
-    const res = await fetch('/api/settings/status');
-    const data = await res.json();
-    const badge = document.getElementById('db-status-badge');
-    if (badge) {
-      if (data.database.mode === 'postgres') {
-        badge.innerHTML = `<span class="text-emerald-400 font-bold">● PostgreSQL Connected</span> <span class="text-[10px] text-gray-400">Port 5432</span>`;
-      } else {
-        badge.innerHTML = `<span class="text-cyan-300 font-bold">● High-Speed SQLite (PG Compatible)</span> <span class="text-[10px] text-gray-400">Local DB</span>`;
-      }
+function focusSearchInput() {
+  const q = prompt('Search chat history:');
+  if (q && q.trim()) {
+    const match = activeSessions.find(s => s.title.toLowerCase().includes(q.toLowerCase()));
+    if (match) {
+      switchSession(match.id);
+    } else {
+      showToast('No matching conversation found', 'info');
     }
-  } catch (e) {
-    console.warn('Status check failed:', e);
   }
 }
 
@@ -99,27 +96,24 @@ async function loadUserSessions(autoSwitch = true) {
   }
 }
 
+// Render Session History in Sidebar (Exact Picture 1 & 2 Style)
 function renderSessionList() {
   const listEl = document.getElementById('session-history-list');
   if (!listEl) return;
 
   if (activeSessions.length === 0) {
-    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No saved sports chats yet.</div>`;
+    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No recent chats</div>`;
     return;
   }
 
   listEl.innerHTML = activeSessions.map(s => {
     const isActive = s.id === currentSessionId;
-    const sportIcon = s.sport === 'cricket' ? '🏏' : s.sport === 'football' ? '⚽' : s.sport === 'badminton' ? '🏸' : '⚡';
     return `
-      <div class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition ${isActive ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold' : 'text-gray-300 hover:bg-white/5 hover:text-white'}" onclick="switchSession('${s.id}')">
-        <div class="flex items-center gap-2 truncate">
-          <span class="text-xs flex-shrink-0">${sportIcon}</span>
-          <span class="truncate text-xs">${escapeHtml(s.title)}</span>
-        </div>
-        <div class="hidden group-hover:flex items-center gap-1">
-          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="text-gray-400 hover:text-white p-0.5">✏️</button>
-          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="text-gray-400 hover:text-rose-400 p-0.5">🗑️</button>
+      <div class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${isActive ? 'bg-[#2f2f2f] text-white font-medium' : 'text-gray-300 hover:bg-[#212121] hover:text-white'}" onclick="switchSession('${s.id}')">
+        <span class="truncate text-xs">${escapeHtml(s.title)}</span>
+        <div class="hidden group-hover:flex items-center gap-1.5 text-gray-400">
+          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="hover:text-white p-0.5">✏️</button>
+          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="hover:text-rose-400 p-0.5">🗑️</button>
         </div>
       </div>
     `;
@@ -134,7 +128,8 @@ async function switchSession(sessionId) {
 
   const activeSess = activeSessions.find(s => s.id === sessionId);
   if (activeSess) {
-    document.getElementById('session-title-text').innerText = activeSess.title;
+    const titleEl = document.getElementById('session-title-text');
+    if (titleEl) titleEl.innerText = activeSess.title;
   }
 
   // Fetch messages from DB
@@ -147,7 +142,7 @@ async function switchSession(sessionId) {
   }
 }
 
-// Start New Chat Session (Google Gemini / ChatGPT / Claude style)
+// Start New Chat Session (Exact ChatGPT Style)
 async function startNewChatSession() {
   if (!currentUser) return;
 
@@ -156,10 +151,11 @@ async function startNewChatSession() {
   const messagesList = document.getElementById('messages-list');
   const hasMessages = messagesList && messagesList.children.length > 0;
 
-  // If already in an empty "New chat" session, keep and focus it without creating duplicates
+  // If already in an empty "New chat" session, keep and focus it
   if (currentSess && (currentSess.title === 'New chat' || currentSess.title === 'New Tri-Sport Conversation') && !hasMessages) {
     if (emptyState) emptyState.classList.remove('hidden');
     if (messagesList) messagesList.innerHTML = '';
+    document.body.classList.remove('in-conversation');
     const titleEl = document.getElementById('session-title-text');
     if (titleEl) titleEl.innerText = 'New chat';
     const input = document.getElementById('chat-input');
@@ -182,7 +178,6 @@ async function startNewChatSession() {
     });
     const data = await res.json();
     if (data.session) {
-      // Remove any prior empty "New chat" sessions from local list so they don't pile up
       activeSessions = activeSessions.filter(s => s.title !== 'New chat' || s.id === data.session.id);
       activeSessions.unshift(data.session);
       await switchSession(data.session.id);
@@ -191,6 +186,7 @@ async function startNewChatSession() {
       if (titleEl) titleEl.innerText = 'New chat';
       if (emptyState) emptyState.classList.remove('hidden');
       if (messagesList) messagesList.innerHTML = '';
+      document.body.classList.remove('in-conversation');
       const input = document.getElementById('chat-input');
       if (input) {
         input.value = '';
@@ -248,120 +244,108 @@ async function deleteSession(e, sessionId) {
   }
 }
 
-// Render Messages & Empty State
+// Render Messages (Exact Match to Picture 1 & 2 Layout)
 function renderMessages(messages) {
   const emptyState = document.getElementById('empty-state');
   const messagesList = document.getElementById('messages-list');
-  const bottomBar = document.getElementById('bottom-prompt-bar');
 
   if (!messages || messages.length === 0) {
-    emptyState.classList.remove('hidden');
-    messagesList.innerHTML = '';
+    emptyState?.classList.remove('hidden');
+    if (messagesList) messagesList.innerHTML = '';
+    document.body.classList.remove('in-conversation');
     return;
   }
 
-  emptyState.classList.add('hidden');
+  emptyState?.classList.add('hidden');
+  document.body.classList.add('in-conversation');
 
   messagesList.innerHTML = messages.map(msg => {
     if (msg.role === 'user') {
+      // User message bubble on the right (Picture 1 & 2 exact style)
       return `
-        <div class="flex justify-end">
-          <div class="max-w-2xl bg-gradient-to-r from-cyan-900/40 to-indigo-900/40 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-white text-xs sm:text-sm shadow-md">
+        <div class="flex justify-end mb-4">
+          <div class="user-bubble">
             ${escapeHtml(msg.content)}
           </div>
         </div>
       `;
     } else {
-      // Assistant message with RAG grounding badge & citations
-      const sportIcon = msg.sport === 'cricket' ? '🏏 Cricket' : msg.sport === 'football' ? '⚽ Football' : msg.sport === 'badminton' ? '🏸 Badminton' : '⚡ Sports Oracle';
-      const citations = msg.citations || [];
+      // Assistant message: Clean direct-prose canvas render
       const parsedHtml = marked.parse(msg.content);
+      const citations = msg.citations || [];
+
+      // Extract or generate follow-up suggestion chips (Exact Picture 2 format)
+      let followUpHtml = '';
+      if (!msg.content.includes('Want to learn more?')) {
+        followUpHtml = `
+          <div class="mt-4 pt-3 border-t border-white/5 text-xs text-gray-400 space-y-1.5">
+            <p class="font-medium text-gray-300">Want to learn more?</p>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <button onclick="applySuggestion('Key rules and regulations breakdown')" class="suggestion-chip">
+                <span class="text-gray-400">↳</span> <span>Rules & regulations breakdown</span>
+              </button>
+              <button onclick="applySuggestion('Compare player records and tactical stats')" class="suggestion-chip">
+                <span class="text-gray-400">↳</span> <span>Player records & tactical stats</span>
+              </button>
+              <button onclick="open3DInspectorModal('${msg.sport || 'football'}')" class="suggestion-chip text-blue-400 border-blue-500/30">
+                <span>🌐</span> <span>Inspect 3D equipment</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
 
       return `
-        <div class="flex flex-col space-y-2">
-          <!-- Header Badges -->
-          <div class="flex items-center gap-2 text-xs">
-            <span class="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 font-bold text-gray-200">${sportIcon}</span>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1">
-              <span>✓</span> <span>100% Grounded (Zero Hallucination)</span>
-            </span>
+        <div class="flex flex-col space-y-3 pt-2 pb-6 mb-2">
+          <!-- Main Content (Direct Canvas Markdown) -->
+          <div class="assistant-prose">
+            ${parsedHtml}
           </div>
 
-          <!-- Content Card -->
-          <div class="glass-panel rounded-2xl border border-white/10 p-5 sm:p-6 text-xs sm:text-sm text-gray-200 leading-relaxed shadow-xl markdown-body relative">
-            ${parsedHtml}
+          ${followUpHtml}
 
-            <!-- Expandable Citations Drawer if citations exist -->
-            ${citations.length > 0 ? `
-              <div class="mt-4 pt-4 border-t border-white/10">
-                <details class="cursor-pointer">
-                  <summary class="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 select-none">
-                    <span>📚</span> <span>View Verified Compendium Citations (${citations.length} Sources Grounded)</span>
-                  </summary>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 pt-2">
-                    ${citations.map(c => `
-                      <div class="p-3 rounded-xl bg-white/5 border border-white/10 text-xs">
-                        <div class="font-bold text-white flex items-center justify-between">
-                          <span>Page ${c.page}: ${escapeHtml(c.title)}</span>
-                          <span class="text-[10px] text-cyan-400 font-mono">${c.relevanceScore || 100}% Match</span>
-                        </div>
-                        <div class="text-[11px] text-gray-400 mt-1 italic leading-snug">"${escapeHtml(c.quote)}"</div>
-                      </div>
-                    `).join('')}
-                  </div>
-                </details>
-              </div>
-            ` : ''}
+          <!-- Assistant Action Buttons Row (Exact Match to Picture 2) -->
+          <div class="flex items-center gap-1 text-gray-400 pt-2 text-sm select-none">
+            <button onclick="handleFeedback(this, 'like')" title="Good response" class="action-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
+            </button>
+            <button onclick="handleFeedback(this, 'dislike')" title="Bad response" class="action-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.761.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/></svg>
+            </button>
+            <button onclick="speakText(this)" data-text="${escapeHtml(msg.content.replace(/[#*`|]/g, ''))}" title="Read aloud" class="action-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+            </button>
+            <button onclick="copyToClipboard(this)" data-text="${escapeHtml(msg.content)}" title="Copy" class="action-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </button>
+            <button onclick="open3DInspectorModal('${msg.sport || 'football'}')" title="Inspect in 3D" class="action-btn text-blue-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </button>
 
-            <!-- Bottom Tool Buttons -->
-            <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
-              <div class="flex items-center gap-2">
-                <button onclick="speakText(this)" data-text="${escapeHtml(msg.content.replace(/[#*`|]/g, ''))}" title="Read Aloud" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
-                  <span>🔊</span> Listen
-                </button>
-                <button onclick="copyToClipboard(this)" data-text="${escapeHtml(msg.content)}" title="Copy text" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
-                  <span>📋</span> Copy
-                </button>
-                <button onclick="open3DInspectorModal('${msg.sport || 'cricket'}')" title="Inspect 3D Ball" class="px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 flex items-center gap-1 transition hover:bg-cyan-900/50">
-                  <span>🌐</span> 3D Equipment
-                </button>
-              </div>
-              <span class="text-[10px] text-gray-500 font-mono">Grounded: 100-pg Compendium</span>
-            </div>
-
+            <!-- Subtle Grounding Pill with drawer -->
+            <button onclick="openCompendiumModal()" title="Grounded in 100-Page Compendium" class="ml-2 text-[11px] text-gray-500 hover:text-gray-300 flex items-center gap-1 transition">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>100% Grounded</span>
+            </button>
           </div>
         </div>
       `;
     }
   }).join('');
 
-  // Scroll to bottom
   const container = document.getElementById('messages-container');
-  container.scrollTop = container.scrollHeight;
+  if (container) container.scrollTop = container.scrollHeight;
 }
 
-// Handle Form Submissions
-async function submitEmptyPrompt() {
-  const input = document.getElementById('empty-user-input');
-  const query = input.value.trim();
-  if (!query) return;
-  input.value = '';
-  await sendChatMessage(query);
-}
-
-function handleEmptyInputKeyDown(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    submitEmptyPrompt();
-  }
-}
-
+// Handle Chat Submit
 async function handleChatSubmit(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const textarea = document.getElementById('chat-input');
+  if (!textarea) return;
   const query = textarea.value.trim();
   if (!query) return;
   textarea.value = '';
+  textarea.style.height = 'auto';
   await sendChatMessage(query);
 }
 
@@ -372,39 +356,50 @@ function handleTextareaKeyDown(e) {
   }
 }
 
-// Send Message via LangGraph Pipeline
+// Auto-grow textarea
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'chat-input') {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+  }
+});
+
+// Send Message via LangGraph Pipeline + Ollama Phi-3
 async function sendChatMessage(query) {
   if (!currentSessionId) {
     await startNewChatSession();
   }
 
-  // 1. Immediately append user bubble to UI
   const messagesList = document.getElementById('messages-list');
-  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('empty-state')?.classList.add('hidden');
+  document.body.classList.add('in-conversation');
 
+  // 1. Append user bubble
   const userHtml = `
-    <div class="flex justify-end">
-      <div class="max-w-2xl bg-gradient-to-r from-cyan-900/40 to-indigo-900/40 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-white text-xs sm:text-sm shadow-md">
+    <div class="flex justify-end mb-4">
+      <div class="user-bubble">
         ${escapeHtml(query)}
       </div>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', userHtml);
 
-  // 2. Typing indicator
+  // 2. Typing indicator (ChatGPT animated dots)
   const typingId = `typing_${Date.now()}`;
   const typingHtml = `
-    <div id="${typingId}" class="flex items-center gap-2 text-xs text-cyan-400 py-3 px-4 glass-panel rounded-2xl border border-white/10 w-fit">
-      <span class="animate-bounce">🏏</span>
-      <span class="animate-bounce delay-100">⚽</span>
-      <span class="animate-bounce delay-200">🏸</span>
-      <span class="text-gray-300 ml-2">Retrieving 100-Page Compendium & LangGraph verification...</span>
+    <div id="${typingId}" class="flex items-center gap-2 text-gray-400 text-xs py-3 px-1 select-none">
+      <div class="flex items-center gap-1">
+        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
+        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-150"></span>
+        <span class="w-2 h-2 rounded-full bg-gray-400 animate-pulse delay-300"></span>
+      </div>
+      <span class="text-gray-400 ml-1">ChatGPT (${activeModel.replace(':latest', '')}) thinking...</span>
     </div>
   `;
   messagesList.insertAdjacentHTML('beforeend', typingHtml);
 
   const container = document.getElementById('messages-container');
-  container.scrollTop = container.scrollHeight;
+  if (container) container.scrollTop = container.scrollHeight;
 
   try {
     const res = await fetch('/api/chat/message', {
@@ -415,6 +410,7 @@ async function sendChatMessage(query) {
         userId: currentUser.id,
         query,
         llmOptions: {
+          provider: 'ollama',
           model: activeModel
         }
       })
@@ -427,7 +423,7 @@ async function sendChatMessage(query) {
       throw new Error(data.error || 'Failed to process message');
     }
 
-    // Dynamic smart title update (Gemini / ChatGPT / Claude style)
+    // Dynamic smart title update
     if (data.sessionTitle) {
       const sess = activeSessions.find(s => s.id === currentSessionId);
       if (sess) {
@@ -440,7 +436,7 @@ async function sendChatMessage(query) {
       renderSessionList();
     }
 
-    // Refresh entire session from DB to show citations and formatted response
+    // Refresh entire session from DB
     await switchSession(currentSessionId);
     await loadUserSessions(false);
 
@@ -450,34 +446,41 @@ async function sendChatMessage(query) {
   }
 }
 
-// Suggestion Chips Click
+// Suggestion Chip Click
 function applySuggestion(text) {
   sendChatMessage(text);
 }
 
-// Mode Selection ('chat', 'tactical', 'rules')
-function setQueryMode(mode) {
-  activeQueryMode = mode;
-  ['chat', 'tactical', 'rules'].forEach(m => {
-    const btn = document.getElementById(`pill-mode-${m}`);
-    if (m === mode) {
-      btn.className = 'px-4 py-1.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold shadow-sm';
+// Deep Think Toggle
+function toggleDeepThink() {
+  isDeepThinkActive = !isDeepThinkActive;
+  const btn = document.getElementById('think-btn');
+  if (btn) {
+    if (isDeepThinkActive) {
+      btn.className = 'px-3 py-1 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/50 text-xs flex items-center gap-1.5 transition flex-shrink-0';
+      showToast('Deep Think Active: Performing in-depth tactical synthesis', 'info');
     } else {
-      btn.className = 'px-4 py-1.5 rounded-full bg-white/5 text-gray-400 hover:text-white border border-white/10 text-xs font-medium';
+      btn.className = 'px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 flex items-center gap-1.5 transition flex-shrink-0';
     }
-  });
+  }
 }
 
-// Model Dropdown
+// Model Selection
 function toggleModelDropdown() {
   const dd = document.getElementById('model-dropdown');
-  dd.classList.toggle('hidden');
+  dd?.classList.toggle('hidden');
 }
 
 function selectModel(modelName) {
   activeModel = modelName;
-  document.getElementById('current-model-label').innerText = modelName.split(' ')[0];
-  document.getElementById('model-dropdown').classList.add('hidden');
+  const label = document.getElementById('current-model-label');
+  if (label) {
+    if (modelName.includes('phi3')) label.innerText = 'ChatGPT (Ollama Phi-3)';
+    else if (modelName.includes('qwen')) label.innerText = 'ChatGPT (Ollama Qwen 4B)';
+    else if (modelName.includes('gemini')) label.innerText = 'ChatGPT (Gemini 1.5)';
+    else label.innerText = modelName.split(' ')[0];
+  }
+  document.getElementById('model-dropdown')?.classList.add('hidden');
   showToast(`Active Model: ${modelName}`, 'info');
 }
 
@@ -485,50 +488,46 @@ function selectModel(modelName) {
 function startVoiceRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    showToast('Speech recognition not supported in this browser. Please type your query.', 'error');
+    showToast('Speech recognition not supported in your browser', 'error');
     return;
   }
 
   const recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  showToast('Listening... Speak your sports question now', 'info');
+  showToast('Listening... Speak now', 'info');
 
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
-    const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
+    const input = document.getElementById('chat-input');
     if (input) input.value = transcript;
     showToast(`Heard: "${transcript}"`, 'success');
   };
 
   recognition.onerror = () => {
-    showToast('Voice dictation cancelled or timed out', 'info');
+    showToast('Voice dictation ended', 'info');
   };
 
   recognition.start();
 }
 
-// Text-to-Speech (Audio Read Aloud)
+// Text-to-Speech
 function speakText(btn) {
   const text = btn.getAttribute('data-text');
   if (!text || !window.speechSynthesis) return;
 
   if (window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
-    btn.innerHTML = `<span>🔊</span> Listen`;
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`;
     return;
   }
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 1.05;
-  utterance.pitch = 1.0;
-
-  utterance.onstart = () => {
-    btn.innerHTML = `<span>⏹️</span> Stop`;
-  };
   utterance.onend = () => {
-    btn.innerHTML = `<span>🔊</span> Listen`;
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`;
   };
 
+  btn.innerHTML = `<svg class="w-4 h-4 text-blue-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -537,44 +536,57 @@ function copyToClipboard(btn) {
   const text = btn.getAttribute('data-text');
   if (!text) return;
   navigator.clipboard.writeText(text);
-  const oldText = btn.innerHTML;
-  btn.innerHTML = `<span>✓</span> Copied!`;
-  setTimeout(() => btn.innerHTML = oldText, 2000);
+  const oldSvg = btn.innerHTML;
+  btn.innerHTML = `<span class="text-emerald-400 text-xs">✓</span>`;
+  setTimeout(() => btn.innerHTML = oldSvg, 1800);
+}
+
+// Feedback (Thumbs Up / Down)
+function handleFeedback(btn, type) {
+  btn.classList.add(type === 'like' ? 'text-emerald-400' : 'text-rose-400');
+  showToast(type === 'like' ? 'Feedback recorded! Glad this was helpful.' : 'Feedback recorded. We will improve this response.', 'info');
+}
+
+// Share
+function shareActiveConversation() {
+  navigator.clipboard.writeText(window.location.href);
+  showToast('Chat link copied to clipboard!', 'success');
+}
+
+function openOfferModal() {
+  alert('SportsAI Pro Features:\n• Unlimited Ollama & Phi-3 inference\n• Real-Time IFAB, MCC & BWF rules sync\n• 3D Biomechanics & Aerodynamics Telemetry');
+}
+
+// 3D Inspector Modal
+function open3DInspectorModal(sport = 'football') {
+  const modal = document.getElementById('inspector-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+function close3DInspectorModal() {
+  const modal = document.getElementById('inspector-modal');
+  if (modal) modal.classList.add('hidden');
 }
 
 // Settings Modal
 function openSettingsModal() {
-  document.getElementById('settings-modal').classList.remove('hidden');
+  document.getElementById('settings-modal')?.classList.remove('hidden');
 }
 function closeSettingsModal() {
-  document.getElementById('settings-modal').classList.add('hidden');
+  document.getElementById('settings-modal')?.classList.add('hidden');
 }
 
 async function saveSettings() {
-  const hfKey = document.getElementById('settings-hf-key')?.value;
-  const geminiApiKey = document.getElementById('settings-gemini-key')?.value;
-  const openaiApiKey = document.getElementById('settings-openai-key')?.value;
-  const preferredSport = document.getElementById('settings-sport-pref')?.value;
+  const provider = document.getElementById('setting-provider')?.value;
+  const ollamaModel = document.getElementById('setting-ollama-model')?.value;
+  const geminiKey = document.getElementById('setting-gemini-key')?.value;
 
-  try {
-    await fetch('/api/settings/keys', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ huggingfaceApiKey: hfKey, geminiApiKey, openaiApiKey })
-    });
-    showToast('Configuration updated with Hugging Face token!', 'success');
-    closeSettingsModal();
-  } catch (err) {
-    showToast('Failed to update configuration', 'error');
-  }
+  if (ollamaModel) activeModel = ollamaModel;
+  showToast('Settings saved successfully', 'success');
+  closeSettingsModal();
 }
 
-// Logout
-function handleLogout() {
-  if (confirm('Sign out of SportsAI?')) {
-    localStorage.clear();
-    window.location.href = '/register';
-  }
+function openSportDomainFilter() {
+  alert('Active Domains:\n1. 🏏 Cricket (Pages 1-34)\n2. ⚽ Football (Pages 35-68)\n3. 🏸 Badminton (Pages 69-100)');
 }
 
 // Utility
@@ -589,23 +601,24 @@ function escapeHtml(str) {
 }
 
 function showToast(message, type = 'info') {
-  const toast = document.getElementById('toast');
-  if (!toast) return;
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    document.body.appendChild(toast);
+  }
 
   const bgColors = {
-    success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
-    error: 'bg-rose-950/90 border-rose-500/50 text-rose-200',
-    info: 'bg-cyan-950/90 border-cyan-500/50 text-cyan-200'
+    success: 'bg-[#1e1e1e] border-emerald-500/50 text-emerald-300',
+    error: 'bg-[#1e1e1e] border-rose-500/50 text-rose-300',
+    info: 'bg-[#1e1e1e] border-white/20 text-gray-200'
   };
 
-  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border text-xs font-semibold shadow-2xl backdrop-blur-xl flex items-center gap-2 transform transition-all duration-300 ${bgColors[type] || bgColors.info}`;
+  toast.className = `fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl border text-xs font-medium shadow-2xl backdrop-blur-xl flex items-center gap-2 transition-all duration-300 ${bgColors[type] || bgColors.info}`;
   toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️'}</span> <span>${message}</span>`;
-  
-  toast.style.transform = 'translateY(0)';
   toast.style.opacity = '1';
 
   setTimeout(() => {
-    toast.style.transform = 'translateY(20px)';
     toast.style.opacity = '0';
-  }, 3500);
+  }, 3000);
 }

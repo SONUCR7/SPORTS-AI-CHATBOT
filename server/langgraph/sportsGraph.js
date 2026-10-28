@@ -73,14 +73,18 @@ I am your **Zero-Hallucination Sports Analyst**, trained and grounded on a compr
     }
 
     // Step 2: RAG Vector & Keyword Retrieval Node
-    const sportFilter = ['cricket', 'football', 'badminton'].includes(state.classification.sport)
+    let sportFilter = ['cricket', 'football', 'badminton'].includes(state.classification.sport)
       ? state.classification.sport
       : null;
+
+    if (state.classification.sport === 'multi_sports') {
+      sportFilter = null; // Retrieve across all sports for comparative questions
+    }
 
     state.ragChunks = sportsRagService.retrieve({
       query: state.query,
       sportFilter,
-      topK: 4
+      topK: state.classification.sport === 'multi_sports' ? 6 : 4
     });
 
     // Step 3: Live Sports Enrichment Node
@@ -90,25 +94,30 @@ I am your **Zero-Hallucination Sports Analyst**, trained and grounded on a compr
     }
 
     // Step 4: Strict Prompt & Grounded Synthesis Node
-    const systemPrompt = `You are SportsAI, an authoritative, zero-hallucination sports engine specializing strictly in Cricket, Football, and Badminton.
-Your knowledge is grounded directly in an official 100-page Sports Compendium.
+    const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence engine specializing in Cricket, Football, and Badminton.
+You communicate just like ChatGPT: fluent, direct, articulate, and formatted in clean GitHub-style Markdown.
 
-CRITICAL INSTRUCTIONS:
-1. NEVER hallucinate statistics, rules, or player achievements.
-2. Ground all answers firmly in the provided verified compendium passages.
-3. Structure your response with markdown headers, comparison tables, bullet points, and exact Page citations.
-4. If a statistic is asked that is not in the knowledge base, state the factual bounds rather than guessing.
-5. Emphasize tactical acumen, biomechanics, and official laws (MCC for Cricket, IFAB for Football, BWF for Badminton).`;
+CRITICAL RESPONSE GUIDELINES:
+1. DIRECT ANSWER: Answer the user's specific question immediately and conversationally.
+2. RICH FORMATTING: Use bold markdown headers (###), clean paragraphs, bullet points, and clean comparison tables when contrasting sports, rules, or players.
+3. FACTUAL GROUNDING: Ground all answers firmly in official governing rules (MCC Laws for Cricket, IFAB Laws for Football, BWF Statutes for Badminton) and compendium milestones.
+4. NO ROBOTIC TEMPLATES: Never output raw JSON or recite "Domain: Cricket | Chapter:...". Speak naturally like an expert sports analyst.
+5. FOLLOW-UP SUGGESTIONS: At the very end of your response, always provide 3-4 clickable topic suggestions formatted exactly like this:
+Want to learn more?
+↳ [Relevant follow-up topic 1]
+↳ [Relevant follow-up topic 2]
+↳ [Relevant follow-up topic 3]
+I can also provide a ↳ [specialized breakdown or tactical guide].`;
 
     const userPrompt = `USER QUERY: "${state.query}"
-IDENTIFIED SPORT: ${state.classification.sport.toUpperCase()}
+TOPIC/SPORT: ${state.classification.sport.toUpperCase()}
 
-RELEVANT COMPENDIUM RETRIEVALS (100-Page Knowledge Base):
-${state.ragChunks.map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content}\nSTATISTICS: ${JSON.stringify(c.stats)}`).join('\n\n')}
+VERIFIED COMPENDIUM KNOWLEDGE BASE:
+${state.ragChunks.map(c => `[PAGE ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content}\n${c.stats && Object.keys(c.stats).length > 0 ? `STATS: ${JSON.stringify(c.stats)}` : ''}`).join('\n\n')}
 
 ${state.liveContext ? `LIVE CONTEXT:\n${JSON.stringify(state.liveContext, null, 2)}` : ''}
 
-Synthesize an authoritative, rich, zero-hallucination response addressing the query.`;
+Synthesize an engaging, authoritative, zero-hallucination response addressing the query directly.`;
 
     state.rawOutput = await llmService.generateCompletion({
       systemPrompt,
