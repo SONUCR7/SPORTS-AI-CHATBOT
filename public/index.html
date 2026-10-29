@@ -280,6 +280,21 @@
     <!-- Bottom Persistent Input Bar -->
     <div id="bottom-prompt-bar" class="p-4 border-t border-white/10 glass-panel z-20">
       <div class="max-w-4xl mx-auto">
+
+        <!-- Answer Mode Selector (Quick Answer, Detailed Explanation, Tactical Analysis) -->
+        <div class="flex items-center gap-1.5 mb-2 px-1">
+          <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mr-1">Mode:</span>
+          <button type="button" onclick="setAnswerMode('quick')" id="mode-btn-quick" class="answer-mode-btn px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1">
+            <span>⚡</span> Quick Answer
+          </button>
+          <button type="button" onclick="setAnswerMode('detailed')" id="mode-btn-detailed" class="answer-mode-btn active px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1">
+            <span>📖</span> Detailed Explanation
+          </button>
+          <button type="button" onclick="setAnswerMode('tactical')" id="mode-btn-tactical" class="answer-mode-btn px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1">
+            <span>♟️</span> Tactical Analysis
+          </button>
+        </div>
+
         <form onsubmit="handleChatSubmit(event)" class="relative glass-panel rounded-2xl border border-white/15 p-2 focus-within:border-cyan-400/60 shadow-xl transition flex items-center gap-2">
           
           <button type="button" onclick="startNewChatSession()" title="New Chat" class="p-2 text-gray-400 hover:text-white transition">
@@ -435,6 +450,126 @@
 
   <!-- Notification Toast -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none"></div>
+
+  <!-- ========================================== -->
+  <!-- EVIDENCE & CITATION PANEL (Slide-out)      -->
+  <!-- ========================================== -->
+  <div id="evidence-backdrop" onclick="closeEvidenceDrawer()" class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity opacity-0"></div>
+  <aside id="evidence-drawer" class="fixed top-0 right-0 z-50 h-screen w-full sm:w-[500px] bg-[#0c1018]/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl flex flex-col transform translate-x-full">
+    <div class="p-5 border-b border-white/10 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold">
+          📚
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white">Evidence & Verification Drawer</h3>
+          <p class="text-[11px] text-gray-400">Grounding Source Inspector & Truth Matrix</p>
+        </div>
+      </div>
+      <button onclick="closeEvidenceDrawer()" class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition">
+        ✕
+      </button>
+    </div>
+
+    <!-- Grounding Summary Card -->
+    <div class="p-4 border-b border-white/10 bg-white/[0.02]">
+      <div id="evidence-grounding-banner" class="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+    <!-- Citations List -->
+    <div id="evidence-citations-list" class="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
+      <!-- Injected via JS -->
+    </div>
+  </aside>
+
+  <!-- ========================================== -->
+  <!-- 4. LIVE MATCH CENTER MODAL                 -->
+  <!-- ========================================== -->
+  <div id="live-match-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-4xl w-full h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-black/30">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md">
+            ⚡
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base sm:text-lg font-bold text-white">Live Match Center</h3>
+              <span class="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 text-[10px] font-bold flex items-center gap-1 animate-pulse">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> LIVE
+              </span>
+            </div>
+            <p class="text-xs text-gray-400">Real-Time Scoreboards, Timelines & AI Match Intelligence</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="refreshLiveMatches()" title="Refresh scores" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-cyan-300 border border-white/10 text-xs flex items-center gap-1.5 transition">
+            <span>🔄</span> <span class="hidden sm:inline">Refresh</span>
+          </button>
+          <button onclick="closeLiveFeedModal()" class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">✕</button>
+        </div>
+      </div>
+
+      <!-- Sport Navigation Tabs -->
+      <div class="flex items-center gap-2 px-4 pt-3 border-b border-white/10 bg-white/[0.01]">
+        <button onclick="switchLiveSportTab('cricket')" id="live-tab-cricket" class="px-4 py-2 border-b-2 border-red-500 text-red-300 text-xs font-bold flex items-center gap-1.5 transition">
+          🏏 Cricket
+        </button>
+        <button onclick="switchLiveSportTab('football')" id="live-tab-football" class="px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition">
+          ⚽ Football
+        </button>
+        <button onclick="switchLiveSportTab('badminton')" id="live-tab-badminton" class="px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition">
+          🏸 Badminton
+        </button>
+      </div>
+
+      <!-- Content Area with Active Match + AI Tactical Summary -->
+      <div id="live-match-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 5. PLAYER MATRIX & HEAD-TO-HEAD MODAL       -->
+  <!-- ========================================== -->
+  <div id="player-matrix-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-black/30">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-indigo-600 flex items-center justify-center text-white shadow-md">
+            📊
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-white">Player Matrix & Head-to-Head Analytics</h3>
+            <p class="text-xs text-gray-400">Interactive 6-Axis Scouting Radar, Career Benchmarks & AI Verdict</p>
+          </div>
+        </div>
+
+        <button onclick="closePlayerMatrixModal()" class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">✕</button>
+      </div>
+
+      <!-- Preset Bar -->
+      <div class="p-3 border-b border-white/10 bg-white/[0.02] flex items-center gap-2 overflow-x-auto text-xs">
+        <span class="text-gray-400 font-semibold text-[11px] whitespace-nowrap">⚡ Presets:</span>
+        <button onclick="selectPresetComparison('kohli_vs_babar')" class="preset-pill px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 whitespace-nowrap">🏏 Kohli vs Babar</button>
+        <button onclick="selectPresetComparison('bumrah_vs_afridi')" class="preset-pill px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 whitespace-nowrap">🏏 Bumrah vs Shaheen</button>
+        <button onclick="selectPresetComparison('haaland_vs_mbappe')" class="preset-pill px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 whitespace-nowrap">⚽ Haaland vs Mbappé</button>
+        <button onclick="selectPresetComparison('messi_vs_ronaldo')" class="preset-pill px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 whitespace-nowrap">⚽ Messi vs Ronaldo</button>
+        <button onclick="selectPresetComparison('axelsen_vs_ginting')" class="preset-pill px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 whitespace-nowrap">🏸 Axelsen vs Ginting</button>
+      </div>
+
+      <!-- Player Selectors & Scouting Comparison View -->
+      <div id="player-matrix-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="js/app.js?v=3.0"></script>

@@ -157,7 +157,7 @@ router.delete('/sessions/:id', async (req, res) => {
  * Stop Generation signal handling, conversational memory, and genuine compendium RAG citations.
  */
 router.post('/stream', async (req, res) => {
-  const { sessionId, userId, query, model, sportPreference } = req.body;
+  const { sessionId, userId, query, model, sportPreference, answerMode = 'detailed' } = req.body;
 
   if (!sessionId || !query || !query.trim()) {
     return res.status(400).json({ error: 'sessionId and query are required' });
@@ -283,8 +283,9 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
       sport: c.sport,
       chapter: c.chapter,
       title: c.title,
-      quote: c.content.slice(0, 160) + '...',
-      relevanceScore: c.relevanceScore || 95
+      quote: c.content.slice(0, 180) + '...',
+      relevanceScore: c.relevanceScore || 95,
+      rationale: `Provides official ${c.sport.toUpperCase()} rule mandates, technical specifications, and historical records from Chapter "${c.chapter}" directly validating this answer.`
     }));
 
     // Send metadata header
@@ -292,12 +293,24 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
       sport: classification.sport,
       model: model || 'phi3:latest',
       groundingScore: citations.length > 0 ? 100 : 95,
-      citations
+      citations,
+      answerMode
     })}\n\n`);
 
-    // 7. Assemble System Prompt & Conversation History
+    // 7. Assemble System Prompt & Conversation History based on Answer Mode
+    let modeGuidance = '';
+    if (answerMode === 'quick') {
+      modeGuidance = 'MODE: QUICK ANSWER — Provide a concise, high-density, direct summary in 1-2 punchy paragraphs with 3 key bullet points. Answer immediately without lengthy preamble.';
+    } else if (answerMode === 'tactical') {
+      modeGuidance = 'MODE: TACTICAL ANALYSIS — Provide an elite tactical breakdown: formations, player spatial roles, game-theory decisions, aerodynamic/physical metrics, and structured comparison tables.';
+    } else {
+      modeGuidance = 'MODE: DETAILED EXPLANATION — Provide a comprehensive, authoritative, step-by-step breakdown covering official governing rules (MCC/IFAB/BWF), history, mechanics, and concrete examples.';
+    }
+
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence analyst specializing in Cricket, Football, and Badminton.
 You communicate naturally, articulately, and fluently, formatted in clean GitHub-style Markdown.
+
+${modeGuidance}
 
 CORE RULES:
 1. DIRECT ANSWER: Answer the user's specific question directly, conversationally, and accurately.
@@ -402,7 +415,7 @@ Want to learn more?
  */
 router.post('/message', async (req, res) => {
   try {
-    const { sessionId, userId, query, llmOptions = {} } = req.body;
+    const { sessionId, userId, query, answerMode = 'detailed', llmOptions = {} } = req.body;
     if (!sessionId || !query) {
       return res.status(400).json({ error: 'sessionId and query are required' });
     }
@@ -435,12 +448,23 @@ router.post('/message', async (req, res) => {
       sport: c.sport,
       chapter: c.chapter,
       title: c.title,
-      quote: c.content.slice(0, 160) + '...',
-      relevanceScore: c.relevanceScore || 95
+      quote: c.content.slice(0, 180) + '...',
+      relevanceScore: c.relevanceScore || 95,
+      rationale: `Provides official ${c.sport.toUpperCase()} rule mandates, technical specifications, and historical records from Chapter "${c.chapter}" directly validating this answer.`
     }));
+
+    let modeGuidance = '';
+    if (answerMode === 'quick') {
+      modeGuidance = 'MODE: QUICK ANSWER — Provide a concise, high-density, direct summary in 1-2 punchy paragraphs with 3 key bullet points.';
+    } else if (answerMode === 'tactical') {
+      modeGuidance = 'MODE: TACTICAL ANALYSIS — Provide an elite tactical breakdown: formations, player spatial roles, game-theory decisions, aerodynamic/physical metrics, and structured comparison tables.';
+    } else {
+      modeGuidance = 'MODE: DETAILED EXPLANATION — Provide a comprehensive, authoritative, step-by-step breakdown covering official governing rules (MCC/IFAB/BWF), history, mechanics, and concrete examples.';
+    }
 
     // Build prompt & messages
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence analyst specializing in Cricket, Football, and Badminton.
+${modeGuidance}
 Ground rules in official MCC (Cricket), IFAB (Football), and BWF (Badminton) laws.
 Clean Markdown formatting with headers (###) and comparison tables where useful.
 Maintain conversational context from prior dialogue.

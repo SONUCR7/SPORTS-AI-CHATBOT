@@ -239,3 +239,117 @@ code, pre {
 .animate-soft-pulse {
   animation: softPulse 6s ease-in-out infinite;
 }
+
+/* ========================================================
+   PREMIUM IMPROVEMENTS: EVIDENCE DRAWER, RADAR & LIVE CENTER
+   ======================================================== */
+
+/* Evidence Drawer Slide-over */
+#evidence-backdrop {
+  transition: opacity 0.3s ease-in-out;
+}
+#evidence-drawer {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Answer Mode Pills */
+.answer-mode-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.answer-mode-btn.active {
+  background: rgba(0, 242, 254, 0.18);
+  border-color: rgba(0, 242, 254, 0.5);
+  color: #67e8f9;
+  box-shadow: 0 0 14px -3px rgba(0, 242, 254, 0.4);
+}
+.answer-mode-btn:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+.answer-mode-btn:not(.active):hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+}
+
+/* Interactive SVG Radar Chart */
+.radar-grid-line {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-dasharray: 2, 2;
+  fill: none;
+}
+.radar-axis-line {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+.radar-poly-p1 {
+  fill: rgba(0, 242, 254, 0.25);
+  stroke: #00f2fe;
+  stroke-width: 2.5;
+  transition: all 0.4s ease;
+}
+.radar-poly-p2 {
+  fill: rgba(168, 85, 247, 0.25);
+  stroke: #a855f7;
+  stroke-width: 2.5;
+  transition: all 0.4s ease;
+}
+.radar-dot-p1 {
+  fill: #00f2fe;
+  stroke: #0a0e17;
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: r 0.2s;
+}
+.radar-dot-p1:hover {
+  r: 5;
+}
+.radar-dot-p2 {
+  fill: #a855f7;
+  stroke: #0a0e17;
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: r 0.2s;
+}
+.radar-dot-p2:hover {
+  r: 5;
+}
+
+/* Live Ball-by-ball Chip */
+.ball-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.ball-chip-dot {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ball-chip-run {
+  background: rgba(0, 242, 254, 0.15);
+  color: #67e8f9;
+  border: 1px solid rgba(0, 242, 254, 0.35);
+}
+.ball-chip-boundary {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+.ball-chip-six {
+  background: rgba(168, 85, 247, 0.25);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+}
+.ball-chip-wicket {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  animation: pulse 2s infinite;
+}
+
