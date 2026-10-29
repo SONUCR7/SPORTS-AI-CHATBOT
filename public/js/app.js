@@ -21,6 +21,13 @@ let currentAbortController = null;
 let isGenerating = false;
 
 // Initialization
+if (typeof marked !== 'undefined') {
+  marked.setOptions({
+    gfm: true,
+    breaks: true
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Check auth
   const storedUser = localStorage.getItem('sportsai_user');
