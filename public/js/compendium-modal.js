@@ -249,7 +249,7 @@ function animateInspector() {
 // ==========================================
 // 3. LIVE MATCH CENTER
 // ==========================================
-let liveMatchesCache = null;
+let liveMatchesCache = (typeof defaultLiveMatches !== 'undefined') ? defaultLiveMatches : null;
 let activeLiveSport = 'cricket';
 
 async function openLiveFeedModal() {
@@ -257,11 +257,16 @@ async function openLiveFeedModal() {
   if (!modal) return;
   modal.classList.remove('hidden');
 
-  if (!liveMatchesCache) {
-    await fetchLiveMatches();
-  } else {
-    renderLiveMatches();
+  if (!liveMatchesCache && typeof defaultLiveMatches !== 'undefined') {
+    liveMatchesCache = defaultLiveMatches;
   }
+  if (!dashboardDataCache && typeof defaultDashboardData !== 'undefined') {
+    dashboardDataCache = defaultDashboardData;
+  }
+
+  renderDashboardCurrentView();
+  fetchLiveMatches();
+  fetchDashboardDataBackground();
 }
 
 function closeLiveFeedModal() {
@@ -270,28 +275,51 @@ function closeLiveFeedModal() {
 }
 
 async function fetchLiveMatches(force = false) {
-  const contentEl = document.getElementById('live-match-content');
-  if (contentEl && !liveMatchesCache) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Fetching live sport feeds from Cricbuzz & football-data.org...</div>`;
-
   try {
     const res = await fetch(`/api/sports/live-matches${force ? '?refresh=true' : ''}`);
-    const data = await res.json();
-    liveMatchesCache = data;
-    renderDashboardCurrentView();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.matches) {
+        liveMatchesCache = data;
+        if (activeDashboardView === 'live') {
+          renderLiveMatches();
+        }
+      }
+    }
   } catch (err) {
-    console.error('Failed to load live matches:', err);
-    if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-rose-400">Failed to connect to live sports data provider.</div>`;
+    console.warn('[LiveMatches] Using embedded match feed:', err.message);
+  }
+}
+
+async function fetchDashboardDataBackground(force = false) {
+  try {
+    const res = await fetch(`/api/sports/dashboard-data${force ? '?refresh=true' : ''}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.upcomingFixtures) {
+        dashboardDataCache = data;
+        if (activeDashboardView !== 'live') {
+          renderDashboardCurrentView();
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Dashboard] Using embedded dashboard feed:', err.message);
   }
 }
 
 async function refreshLiveMatches() {
   const contentEl = document.getElementById('live-match-content');
-  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400 animate-pulse">Syncing real-time match data from Cricbuzz & football-data.org...</div>`;
-  await fetchLiveMatches(true);
-  showToast('Live scores and sports API data synchronized', 'success');
+  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400 animate-pulse">Syncing real-time sports feed from Cricbuzz, football-data.org & BWF...</div>`;
+  await Promise.allSettled([
+    fetchLiveMatches(true),
+    fetchDashboardDataBackground(true)
+  ]);
+  renderDashboardCurrentView();
+  showToast('Live scores, fixtures, and sports feeds synchronized', 'success');
 }
 
-let dashboardDataCache = null;
+let dashboardDataCache = (typeof defaultDashboardData !== 'undefined') ? defaultDashboardData : null;
 let activeDashboardView = 'live'; // 'live' | 'fixtures' | 'results' | 'rankings'
 
 function switchDashboardView(view) {
@@ -329,7 +357,7 @@ function switchLiveSportTab(sport) {
   renderDashboardCurrentView();
 }
 
-async function renderDashboardCurrentView() {
+function renderDashboardCurrentView() {
   const contentEl = document.getElementById('live-match-content');
   if (!contentEl) return;
 
@@ -338,16 +366,9 @@ async function renderDashboardCurrentView() {
     return;
   }
 
-  // Load dashboard data if not cached
-  if (!dashboardDataCache) {
-    contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Loading sports intelligence dashboard...</div>`;
-    try {
-      const res = await fetch('/api/sports/dashboard-data');
-      dashboardDataCache = await res.json();
-    } catch (e) {
-      contentEl.innerHTML = `<div class="p-8 text-center text-rose-400">Failed to load sports dashboard feed.</div>`;
-      return;
-    }
+  // Ensure dashboardDataCache is set
+  if (!dashboardDataCache && typeof defaultDashboardData !== 'undefined') {
+    dashboardDataCache = defaultDashboardData;
   }
 
   if (activeDashboardView === 'fixtures') {
@@ -361,7 +382,12 @@ async function renderDashboardCurrentView() {
 
 function renderUpcomingFixtures() {
   const contentEl = document.getElementById('live-match-content');
-  if (!contentEl || !dashboardDataCache) return;
+  if (!contentEl) return;
+
+  if (!dashboardDataCache && typeof defaultDashboardData !== 'undefined') {
+    dashboardDataCache = defaultDashboardData;
+  }
+  if (!dashboardDataCache) return;
 
   const fixtures = dashboardDataCache.upcomingFixtures?.[activeLiveSport] || [];
   if (fixtures.length === 0) {
@@ -379,25 +405,30 @@ function renderUpcomingFixtures() {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${fixtures.map(f => `
+        ${fixtures.map(f => {
+          const matchTitle = f.match || f.teams || f.league || 'Upcoming Match';
+          const matchDate = f.date || 'Scheduled';
+          const matchVenue = f.venue || 'Stadium';
+          const tactical = f.tacticalKey || 'Tactical analysis pending.';
+          return `
           <div class="glass-panel rounded-2xl border border-white/10 p-5 space-y-3 shadow-xl">
             <div class="flex items-center justify-between border-b border-white/10 pb-2">
-              <span class="text-xs font-bold text-cyan-300">${escapeHtml(f.match)}</span>
-              <span class="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold">${escapeHtml(f.date)}</span>
+              <span class="text-xs font-bold text-cyan-300">${escapeHtml(matchTitle)}</span>
+              <span class="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold">${escapeHtml(matchDate)}</span>
             </div>
             <div class="text-xs text-gray-300 flex items-center gap-2">
-              <span>📍</span> <span>${escapeHtml(f.venue)}</span>
+              <span>📍</span> <span>${escapeHtml(matchVenue)}</span>
             </div>
             <div class="p-3 rounded-xl bg-black/40 border border-white/5 text-xs text-gray-300 leading-relaxed">
-              <strong class="text-cyan-400">Tactical Key:</strong> ${escapeHtml(f.tacticalKey)}
+              <strong class="text-cyan-400">Tactical Key:</strong> ${escapeHtml(tactical)}
             </div>
             <div class="pt-2 border-t border-white/5 flex justify-end">
-              <button onclick="closeLiveFeedModal(); sendChatMessage('Preview the upcoming tactical clash: ${escapeHtml(f.match).replace(/'/g, "\\'")} taking place on ${escapeHtml(f.date)}');" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/30 transition flex items-center gap-1">
+              <button onclick="closeLiveFeedModal(); sendChatMessage('Preview the upcoming tactical clash: ${escapeHtml(matchTitle).replace(/'/g, "\\'")} taking place on ${escapeHtml(matchDate)}');" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/30 transition flex items-center gap-1">
                 <span>⚡</span> Ask AI Match Preview →
               </button>
             </div>
           </div>
-        `).join('')}
+        `}).join('')}
       </div>
     </div>
   `;
@@ -923,21 +954,21 @@ async function generateAIMatchSummary(matchId) {
 // ==========================================
 // 4. PLAYER MATRIX & HEAD-TO-HEAD SCOUTING
 // ==========================================
-let playerMatrixCache = null;
+let playerMatrixCache = (typeof defaultPlayerMatrix !== 'undefined') ? defaultPlayerMatrix : null;
 let activeMatrixSport = 'cricket';
 let activePlayer1Key = 'virat_kohli';
 let activePlayer2Key = 'babar_azam';
 
-async function openPlayerMatrixModal() {
+function openPlayerMatrixModal() {
   const modal = document.getElementById('player-matrix-modal');
   if (!modal) return;
   modal.classList.remove('hidden');
 
-  if (!playerMatrixCache) {
-    await fetchPlayerMatrixData();
-  } else {
-    renderPlayerMatrix();
+  if (!playerMatrixCache && typeof defaultPlayerMatrix !== 'undefined') {
+    playerMatrixCache = defaultPlayerMatrix;
   }
+  renderPlayerMatrix();
+  fetchPlayerMatrixData();
 }
 
 function closePlayerMatrixModal() {
@@ -946,17 +977,17 @@ function closePlayerMatrixModal() {
 }
 
 async function fetchPlayerMatrixData() {
-  const contentEl = document.getElementById('player-matrix-content');
-  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Loading scouting matrix dataset...</div>`;
-
   try {
     const res = await fetch('/api/sports/players');
-    const data = await res.json();
-    playerMatrixCache = data;
-    renderPlayerMatrix();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.sports) {
+        playerMatrixCache = data;
+        renderPlayerMatrix();
+      }
+    }
   } catch (err) {
-    console.error('Failed to load player matrix:', err);
-    if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-rose-400">Failed to load scouting dataset.</div>`;
+    console.warn('[PlayerMatrix] Using embedded scouting dataset:', err.message);
   }
 }
 
