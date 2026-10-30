@@ -418,9 +418,28 @@
           <input type="password" id="settings-gemini-key" placeholder="Enter GEMINI_API_KEY" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
         </div>
 
-        <div>
-          <label class="block font-semibold text-gray-300 mb-1">Hugging Face API Token (Optional)</label>
-          <input type="password" id="settings-hf-key" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+        <div class="pt-2 border-t border-white/10">
+          <div class="text-[11px] font-bold text-cyan-300 uppercase tracking-wider mb-2">⚡ Live Sports Data Providers</div>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="block font-semibold text-gray-300 mb-1">⚽ Football Live API Key (football-data.org)</label>
+              <input type="password" id="settings-football-key" placeholder="Enter football-data.org token (PL, UCL, La Liga, Bundesliga)" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+              <span class="text-[10px] text-gray-500">Free token covers Premier League, Champions League, La Liga, Bundesliga</span>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-gray-300 mb-1">🏏 Cricbuzz / Cricket Live Key (RapidAPI / CricAPI)</label>
+              <input type="password" id="settings-cricket-key" placeholder="Enter Cricbuzz RapidAPI key or CricAPI key" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+              <span class="text-[10px] text-gray-500">Live scorecards, ball-by-ball, overs and wickets from Cricbuzz / CricAPI</span>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-gray-300 mb-1">🏸 Badminton Live API Key (RapidAPI / BWF)</label>
+              <input type="password" id="settings-badminton-key" placeholder="Enter Badminton RapidAPI or BWF token" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white">
+              <span class="text-[10px] text-gray-500">Live BWF World Tour scores and tournament matches</span>
+            </div>
+          </div>
         </div>
 
         <div>

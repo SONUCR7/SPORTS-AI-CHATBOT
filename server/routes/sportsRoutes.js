@@ -29,9 +29,9 @@ router.get('/live', (req, res) => {
 });
 
 // Full Live Match Center Data (Cricket, Football, Badminton)
-router.get('/live-matches', (req, res) => {
+router.get('/live-matches', async (req, res) => {
   try {
-    const data = liveSportsApi.getLiveMatches();
+    const data = await liveSportsApi.getLiveMatches(req.query.refresh === 'true');
     res.json(data);
   } catch (err) {
     console.error('[SportsRoutes] live-matches error:', err);
@@ -136,9 +136,9 @@ Generate the definitive head-to-head tactical scout verdict.`;
 });
 
 // Full Dashboard Data (Live, Fixtures, Recent Results, Rankings)
-router.get('/dashboard-data', (req, res) => {
+router.get('/dashboard-data', async (req, res) => {
   try {
-    const data = liveSportsApi.getDashboardData();
+    const data = await liveSportsApi.getDashboardData(req.query.refresh === 'true');
     res.json(data);
   } catch (err) {
     console.error('[SportsRoutes] dashboard-data error:', err);

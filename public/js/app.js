@@ -1094,18 +1094,28 @@ function closeSettingsModal() {
 }
 
 async function saveSettings() {
-  const hfKey = document.getElementById('settings-hf-key')?.value;
   const geminiApiKey = document.getElementById('settings-gemini-key')?.value;
+  const footballKey = document.getElementById('settings-football-key')?.value;
+  const cricketKey = document.getElementById('settings-cricket-key')?.value;
+  const badmintonKey = document.getElementById('settings-badminton-key')?.value;
   const preferredSport = document.getElementById('settings-sport-pref')?.value;
 
   try {
     await fetch('/api/settings/keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ huggingfaceApiKey: hfKey, geminiApiKey })
+      body: JSON.stringify({
+        geminiApiKey,
+        footballDataApiKey: footballKey,
+        cricbuzzApiKey: cricketKey,
+        badmintonApiKey: badmintonKey
+      })
     });
-    showToast('Configuration updated!', 'success');
+    showToast('Configuration and Live Sports keys saved!', 'success');
     closeSettingsModal();
+    if (typeof refreshLiveMatches === 'function') {
+      refreshLiveMatches();
+    }
   } catch (err) {
     showToast('Failed to update configuration', 'error');
   }

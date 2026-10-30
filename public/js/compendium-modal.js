@@ -269,15 +269,15 @@ function closeLiveFeedModal() {
   modal?.classList.add('hidden');
 }
 
-async function fetchLiveMatches() {
+async function fetchLiveMatches(force = false) {
   const contentEl = document.getElementById('live-match-content');
-  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Fetching live sport feeds...</div>`;
+  if (contentEl && !liveMatchesCache) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Fetching live sport feeds from Cricbuzz & football-data.org...</div>`;
 
   try {
-    const res = await fetch('/api/sports/live-matches');
+    const res = await fetch(`/api/sports/live-matches${force ? '?refresh=true' : ''}`);
     const data = await res.json();
     liveMatchesCache = data;
-    renderLiveMatches();
+    renderDashboardCurrentView();
   } catch (err) {
     console.error('Failed to load live matches:', err);
     if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-rose-400">Failed to connect to live sports data provider.</div>`;
@@ -285,8 +285,10 @@ async function fetchLiveMatches() {
 }
 
 async function refreshLiveMatches() {
-  await fetchLiveMatches();
-  showToast('Live scores and events updated', 'info');
+  const contentEl = document.getElementById('live-match-content');
+  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400 animate-pulse">Syncing real-time match data from Cricbuzz & football-data.org...</div>`;
+  await fetchLiveMatches(true);
+  showToast('Live scores and sports API data synchronized', 'success');
 }
 
 let dashboardDataCache = null;
@@ -583,21 +585,51 @@ function renderLiveMatches() {
   if (!contentEl || !liveMatchesCache) return;
 
   const matches = liveMatchesCache.matches?.[activeLiveSport] || [];
+  const statusInfo = liveMatchesCache.sourceStatus?.[activeLiveSport];
+  const isLive = Boolean(statusInfo?.isLive);
+  const providerName = statusInfo?.provider || 'Verified Sports Feed';
+
+  const statusBannerHtml = `
+    <div class="p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border mb-4 shadow-md ${
+      isLive ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' : 'bg-white/5 border-white/10 text-gray-300'
+    }">
+      <div class="flex items-center gap-2.5">
+        <span class="w-2.5 h-2.5 rounded-full ${isLive ? 'bg-emerald-400 animate-ping' : 'bg-cyan-400'}"></span>
+        <div>
+          <div class="text-xs font-bold text-white flex items-center gap-2">
+            <span>${isLive ? '🟢 LIVE API FEED CONNECTED' : '🟡 LIVE SPORTS DATA FEED'}</span>
+            ${statusInfo?.configured ? '<span class="text-[10px] px-2 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-mono font-bold">API Key Linked</span>' : ''}
+          </div>
+          <div class="text-[11px] text-gray-400">${escapeHtml(providerName)}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <button onclick="openSettingsModal()" class="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-semibold flex items-center gap-1">
+          <span>⚙️</span> API Keys
+        </button>
+        <span class="text-[10px] text-gray-400 font-mono">Updated: ${escapeHtml(liveMatchesCache.lastUpdated || '')}</span>
+      </div>
+    </div>
+  `;
 
   if (matches.length === 0) {
-    contentEl.innerHTML = `<div class="p-8 text-center text-gray-400 text-xs">No active matches found for this sport.</div>`;
+    contentEl.innerHTML = statusBannerHtml + `<div class="p-8 text-center text-gray-400 text-xs">No active matches found for this sport at this moment.</div>`;
     return;
   }
 
-  contentEl.innerHTML = matches.map(m => {
-    if (activeLiveSport === 'cricket') {
-      return renderCricketMatchCard(m);
-    } else if (activeLiveSport === 'football') {
-      return renderFootballMatchCard(m);
-    } else {
-      return renderBadmintonMatchCard(m);
-    }
-  }).join('');
+  contentEl.innerHTML = statusBannerHtml + `
+    <div class="space-y-4">
+      ${matches.map(m => {
+        if (activeLiveSport === 'cricket') {
+          return renderCricketMatchCard(m);
+        } else if (activeLiveSport === 'football') {
+          return renderFootballMatchCard(m);
+        } else {
+          return renderBadmintonMatchCard(m);
+        }
+      }).join('')}
+    </div>
+  `;
 }
 
 function renderCricketMatchCard(m) {

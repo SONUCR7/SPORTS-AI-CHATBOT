@@ -92,8 +92,12 @@ async function runTests() {
   // Test 9: Live Sports Dashboard & Tactical Datasets
   console.log('\n9️⃣ Testing Live Sports Dashboard & Tactical API Data...');
   const { liveSportsApi } = await import('../server/services/liveSportsApi.js');
-  const dashData = liveSportsApi.getDashboardData();
+  const dashData = await liveSportsApi.getDashboardData();
   console.log(`   ✓ Dashboard Fixtures: Cricket(${dashData.upcomingFixtures.cricket.length}), Football(${dashData.upcomingFixtures.football.length}), Badminton(${dashData.upcomingFixtures.badminton.length})`);
+  const liveMatches = await liveSportsApi.getLiveMatches();
+  console.log(`   ✓ Live Matches: Cricket(${liveMatches.matches.cricket.length}), Football(${liveMatches.matches.football.length}), Badminton(${liveMatches.matches.badminton.length})`);
+  console.log(`   ✓ Football Provider: ${liveMatches.sourceStatus.football.provider}`);
+  console.log(`   ✓ Cricket Provider: ${liveMatches.sourceStatus.cricket.provider}`);
   const tacData = liveSportsApi.getTacticalData();
   console.log(`   ✓ Football Formations: ${Object.keys(tacData.football.formations).join(', ')}`);
   console.log(`   ✓ 4-3-3 Player Nodes: ${tacData.football.formations['4-3-3'].players.length} nodes`);
