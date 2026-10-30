@@ -25,14 +25,10 @@ router.get('/status', (req, res) => {
 });
 
 router.post('/keys', (req, res) => {
-  const { geminiApiKey, openaiApiKey, groqApiKey, huggingfaceApiKey } = req.body;
+  const { geminiApiKey, openaiApiKey, groqApiKey } = req.body;
   if (geminiApiKey) process.env.GEMINI_API_KEY = geminiApiKey.trim();
   if (openaiApiKey) process.env.OPENAI_API_KEY = openaiApiKey.trim();
   if (groqApiKey) process.env.GROK_API_KEY = groqApiKey.trim();
-  if (huggingfaceApiKey) {
-    process.env.HUGGINGFACE_API_KEY = huggingfaceApiKey.trim();
-    process.env.HF_TOKEN = huggingfaceApiKey.trim();
-  }
 
   res.json({ success: true, message: 'API keys updated successfully' });
 });

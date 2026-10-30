@@ -92,6 +92,7 @@ class DatabaseManager {
         user_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
         sport VARCHAR(32) DEFAULT 'all',
+        is_pinned INTEGER DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -104,6 +105,8 @@ class DatabaseManager {
         sport VARCHAR(32) DEFAULT 'sports',
         citations TEXT,
         grounding_score NUMERIC DEFAULT 100,
+        is_pinned INTEGER DEFAULT 0,
+        feedback TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -119,6 +122,11 @@ class DatabaseManager {
       );
     `;
     await this.pgPool.query(schemaSql);
+
+    // Apply incremental migrations safely
+    try { await this.pgPool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned INTEGER DEFAULT 0;`); } catch(e){}
+    try { await this.pgPool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS feedback TEXT;`); } catch(e){}
+    try { await this.pgPool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS is_pinned INTEGER DEFAULT 0;`); } catch(e){}
   }
 
   async _initSqliteTables() {
@@ -139,6 +147,7 @@ class DatabaseManager {
         user_id TEXT NOT NULL,
         title TEXT NOT NULL,
         sport TEXT DEFAULT 'all',
+        is_pinned INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -151,6 +160,8 @@ class DatabaseManager {
         sport TEXT DEFAULT 'sports',
         citations TEXT,
         grounding_score REAL DEFAULT 100,
+        is_pinned INTEGER DEFAULT 0,
+        feedback TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -165,6 +176,11 @@ class DatabaseManager {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Apply incremental migrations safely
+    try { this.sqliteDb.exec(`ALTER TABLE messages ADD COLUMN is_pinned INTEGER DEFAULT 0;`); } catch(e){}
+    try { this.sqliteDb.exec(`ALTER TABLE messages ADD COLUMN feedback TEXT;`); } catch(e){}
+    try { this.sqliteDb.exec(`ALTER TABLE sessions ADD COLUMN is_pinned INTEGER DEFAULT 0;`); } catch(e){}
   }
 
   hashPassword(password, salt) {
@@ -410,25 +426,27 @@ Both icons stand at the pinnacle of One Day International cricket with distinct 
     const id = msg.id || `msg_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const citationsStr = typeof msg.citations === 'string' ? msg.citations : JSON.stringify(msg.citations || []);
     const grounding = msg.grounding_score !== undefined ? msg.grounding_score : 100;
+    const isPinned = msg.is_pinned ? 1 : 0;
+    const feedback = msg.feedback || null;
 
     if (this.mode === 'postgres') {
       const sql = `
-        INSERT INTO messages (id, session_id, role, content, sport, citations, grounding_score)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO messages (id, session_id, role, content, sport, citations, grounding_score, is_pinned, feedback)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *;
       `;
-      const res = await this.pgPool.query(sql, [id, msg.session_id, msg.role, msg.content, msg.sport || 'sports', citationsStr, grounding]);
+      const res = await this.pgPool.query(sql, [id, msg.session_id, msg.role, msg.content, msg.sport || 'sports', citationsStr, grounding, isPinned, feedback]);
       // Update session timestamp
       await this.pgPool.query('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [msg.session_id]);
       return res.rows[0];
     } else {
       const stmt = this.sqliteDb.prepare(`
-        INSERT INTO messages (id, session_id, role, content, sport, citations, grounding_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO messages (id, session_id, role, content, sport, citations, grounding_score, is_pinned, feedback)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      stmt.run(id, msg.session_id, msg.role, msg.content, msg.sport || 'sports', citationsStr, grounding);
+      stmt.run(id, msg.session_id, msg.role, msg.content, msg.sport || 'sports', citationsStr, grounding, isPinned, feedback);
       this.sqliteDb.prepare('UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(msg.session_id);
-      return { id, ...msg, citations: citationsStr, grounding_score: grounding };
+      return { id, ...msg, citations: citationsStr, grounding_score: grounding, is_pinned: isPinned, feedback };
     }
   }
 
@@ -440,6 +458,90 @@ Both icons stand at the pinnacle of One Day International cricket with distinct 
       const stmt = this.sqliteDb.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC');
       const rows = stmt.all(sessionId);
       return rows.map(m => ({ ...m, citations: JSON.parse(m.citations || '[]') }));
+    }
+  }
+
+  async togglePinMessage(messageId) {
+    if (this.mode === 'postgres') {
+      const res = await this.pgPool.query(`
+        UPDATE messages 
+        SET is_pinned = CASE WHEN is_pinned = 1 THEN 0 ELSE 1 END 
+        WHERE id = $1 
+        RETURNING *;
+      `, [messageId]);
+      return res.rows[0];
+    } else {
+      const current = this.sqliteDb.prepare('SELECT is_pinned FROM messages WHERE id = ?').get(messageId);
+      const newStatus = (current?.is_pinned === 1) ? 0 : 1;
+      this.sqliteDb.prepare('UPDATE messages SET is_pinned = ? WHERE id = ?').run(newStatus, messageId);
+      return { id: messageId, is_pinned: newStatus };
+    }
+  }
+
+  async setMessageFeedback(messageId, feedback) {
+    if (this.mode === 'postgres') {
+      const res = await this.pgPool.query('UPDATE messages SET feedback = $1 WHERE id = $2 RETURNING *', [feedback, messageId]);
+      return res.rows[0];
+    } else {
+      this.sqliteDb.prepare('UPDATE messages SET feedback = ? WHERE id = ?').run(feedback, messageId);
+      return { id: messageId, feedback };
+    }
+  }
+
+  async clearSessionMessages(sessionId) {
+    if (this.mode === 'postgres') {
+      await this.pgPool.query('DELETE FROM messages WHERE session_id = $1', [sessionId]);
+    } else {
+      this.sqliteDb.prepare('DELETE FROM messages WHERE session_id = ?').run(sessionId);
+    }
+  }
+
+  async searchUserSessions(userId, query) {
+    const q = `%${query.trim().toLowerCase()}%`;
+    if (this.mode === 'postgres') {
+      const sql = `
+        SELECT DISTINCT s.* 
+        FROM sessions s
+        LEFT JOIN messages m ON m.session_id = s.id
+        WHERE s.user_id = $1 AND (
+          LOWER(s.title) LIKE $2 OR 
+          LOWER(m.content) LIKE $2
+        )
+        ORDER BY s.updated_at DESC
+        LIMIT 20;
+      `;
+      const res = await this.pgPool.query(sql, [userId, q]);
+      return res.rows;
+    } else {
+      const stmt = this.sqliteDb.prepare(`
+        SELECT DISTINCT s.* 
+        FROM sessions s
+        LEFT JOIN messages m ON m.session_id = s.id
+        WHERE s.user_id = ? AND (
+          LOWER(s.title) LIKE ? OR 
+          LOWER(m.content) LIKE ?
+        )
+        ORDER BY s.updated_at DESC
+        LIMIT 20
+      `);
+      return stmt.all(userId, q, q);
+    }
+  }
+
+  async togglePinSession(sessionId) {
+    if (this.mode === 'postgres') {
+      const res = await this.pgPool.query(`
+        UPDATE sessions 
+        SET is_pinned = CASE WHEN is_pinned = 1 THEN 0 ELSE 1 END 
+        WHERE id = $1 
+        RETURNING *;
+      `, [sessionId]);
+      return res.rows[0];
+    } else {
+      const current = this.sqliteDb.prepare('SELECT is_pinned FROM sessions WHERE id = ?').get(sessionId);
+      const newStatus = (current?.is_pinned === 1) ? 0 : 1;
+      this.sqliteDb.prepare('UPDATE sessions SET is_pinned = ? WHERE id = ?').run(newStatus, sessionId);
+      return { id: sessionId, is_pinned: newStatus };
     }
   }
 

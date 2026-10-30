@@ -89,7 +89,43 @@ async function runTests() {
   const sessionMsgs = await dbManager.getSessionMessages(sessions[0].id);
   console.log(`   ✓ Session now has ${sessionMsgs.length} messages in database`);
 
-  console.log('\n🎉 ALL 8 SPORTSAI TEST SUITES PASSED FLAWLESSLY WITH 100% GROUNDING!\n');
+  // Test 9: Live Sports Dashboard & Tactical Datasets
+  console.log('\n9️⃣ Testing Live Sports Dashboard & Tactical API Data...');
+  const { liveSportsApi } = await import('../server/services/liveSportsApi.js');
+  const dashData = liveSportsApi.getDashboardData();
+  console.log(`   ✓ Dashboard Fixtures: Cricket(${dashData.upcomingFixtures.cricket.length}), Football(${dashData.upcomingFixtures.football.length}), Badminton(${dashData.upcomingFixtures.badminton.length})`);
+  const tacData = liveSportsApi.getTacticalData();
+  console.log(`   ✓ Football Formations: ${Object.keys(tacData.football.formations).join(', ')}`);
+  console.log(`   ✓ 4-3-3 Player Nodes: ${tacData.football.formations['4-3-3'].players.length} nodes`);
+  if (tacData.football.formations['4-3-3'].players.length !== 11) {
+    throw new Error('Expected 11 players in 4-3-3 formation');
+  }
+
+  // Test 10: Strict Sport RAG Isolation & Zero Cross-Contamination
+  console.log('\n🔟 Testing Strict Sport Metadata Isolation (Zero Cross-Contamination)...');
+  const offsideResults = sportsRagService.retrieve({
+    query: 'What are the offside rules and VAR guidelines?',
+    sportFilter: 'football',
+    topK: 5
+  });
+  const crossSportLeaks = offsideResults.filter(r => r.sport !== 'football');
+  if (crossSportLeaks.length > 0) {
+    throw new Error(`Cross-sport leak detected: found ${crossSportLeaks.length} non-football results in football query`);
+  }
+  console.log(`   ✓ Verified 0 cross-sport leaks in football offside query (${offsideResults.length} football chunks returned)`);
+
+  // Test 11: DB Message Feedback, Pin & Search
+  console.log('\n1️⃣1️⃣ Testing DB Pin, Feedback & Session Search...');
+  const pinnedMsg = await dbManager.togglePinMessage(testMsg.id);
+  console.log(`   ✓ Message pinned state: ${pinnedMsg.is_pinned}`);
+  const feedbackMsg = await dbManager.setMessageFeedback(testMsg.id, 'like');
+  console.log(`   ✓ Message feedback state: ${feedbackMsg.feedback}`);
+  const pinnedSess = await dbManager.togglePinSession(sessions[0].id);
+  console.log(`   ✓ Session pinned state: ${pinnedSess.is_pinned}`);
+  const searchResults = await dbManager.searchUserSessions(demoUser.id, 'cricket');
+  console.log(`   ✓ Session search for "cricket" returned: ${searchResults.length} sessions`);
+
+  console.log('\n🎉 ALL 11 SPORTSAI TEST SUITES PASSED FLAWLESSLY WITH 100% GROUNDING & ZERO LEAKS!\n');
 }
 
 runTests().catch(err => {

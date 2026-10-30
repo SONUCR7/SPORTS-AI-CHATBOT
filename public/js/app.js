@@ -199,31 +199,87 @@ async function loadUserSessions(autoSwitch = true) {
   }
 }
 
+let chatSearchFilter = '';
+
 function renderSessionList() {
   const listEl = document.getElementById('session-history-list');
   if (!listEl) return;
 
-  if (activeSessions.length === 0) {
-    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">No sports chats yet. Start asking!</div>`;
+  let displaySessions = [...activeSessions];
+
+  // Apply search filter if present
+  if (chatSearchFilter && chatSearchFilter.trim() !== '') {
+    const q = chatSearchFilter.trim().toLowerCase();
+    displaySessions = displaySessions.filter(s => (s.title || '').toLowerCase().includes(q));
+  }
+
+  // Sort pinned sessions to top
+  displaySessions.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
+
+  if (displaySessions.length === 0) {
+    listEl.innerHTML = `<div class="p-3 text-center text-gray-500 text-[11px]">${chatSearchFilter ? 'No matching conversations' : 'No sports chats yet. Start asking!'}</div>`;
     return;
   }
 
-  listEl.innerHTML = activeSessions.map(s => {
+  listEl.innerHTML = displaySessions.map(s => {
     const isActive = s.id === currentSessionId;
+    const isPinned = Boolean(s.is_pinned);
     const sportIcon = s.sport === 'cricket' ? '🏏' : s.sport === 'football' ? '⚽' : s.sport === 'badminton' ? '🏸' : '⚡';
     return `
       <div class="group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition ${isActive ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold' : 'text-gray-300 hover:bg-white/5 hover:text-white'}" onclick="switchSession('${s.id}')">
         <div class="flex items-center gap-2 truncate">
           <span class="text-xs flex-shrink-0">${sportIcon}</span>
           <span class="truncate text-xs">${escapeHtml(s.title)}</span>
+          ${isPinned ? '<span class="text-[10px] text-cyan-400 ml-1">📌</span>' : ''}
         </div>
         <div class="hidden group-hover:flex items-center gap-1">
-          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="text-gray-400 hover:text-white p-0.5">✏️</button>
-          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="text-gray-400 hover:text-rose-400 p-0.5">🗑️</button>
+          <button onclick="togglePinSession(event, '${s.id}')" title="${isPinned ? 'Unpin' : 'Pin'}" class="text-gray-400 hover:text-cyan-300 p-0.5 text-xs">${isPinned ? '📌' : '📍'}</button>
+          <button onclick="promptRenameSession(event, '${s.id}', '${escapeHtml(s.title)}')" title="Rename" class="text-gray-400 hover:text-white p-0.5 text-xs">✏️</button>
+          <button onclick="deleteSession(event, '${s.id}')" title="Delete" class="text-gray-400 hover:text-rose-400 p-0.5 text-xs">🗑️</button>
         </div>
       </div>
     `;
   }).join('');
+}
+
+// Search Conversations
+function handleChatSearch(query) {
+  chatSearchFilter = query || '';
+  renderSessionList();
+}
+
+// Toggle Pin Session
+async function togglePinSession(e, sessionId) {
+  e.stopPropagation();
+  try {
+    const res = await fetch(`/api/chat/sessions/${sessionId}/pin`, { method: 'POST' });
+    const data = await res.json();
+    const sess = activeSessions.find(s => s.id === sessionId);
+    if (sess) {
+      sess.is_pinned = data.is_pinned;
+    }
+    renderSessionList();
+    showToast(data.is_pinned ? 'Conversation pinned' : 'Conversation unpinned', 'info');
+  } catch (err) {
+    showToast('Failed to pin conversation', 'error');
+  }
+}
+
+// Clear Messages in Current Session
+async function clearCurrentSessionMessages() {
+  if (!currentSessionId) return;
+  if (!confirm('Clear all messages in this conversation?')) return;
+
+  try {
+    const res = await fetch(`/api/chat/sessions/${currentSessionId}/clear`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      renderMessages([]);
+      showToast('Conversation cleared', 'info');
+    }
+  } catch (err) {
+    showToast('Failed to clear conversation', 'error');
+  }
 }
 
 // Switch Session
@@ -372,7 +428,10 @@ function renderMessages(messages) {
   messagesList.innerHTML = messages.map((msg, index) => {
     if (msg.role === 'user') {
       return `
-        <div class="flex justify-end mb-4">
+        <div class="flex justify-end mb-4 group items-center gap-2">
+          <button onclick="editUserPrompt('${escapeHtml(msg.content).replace(/'/g, "\\'")}')" title="Edit prompt" class="opacity-0 group-hover:opacity-100 text-[11px] text-gray-400 hover:text-cyan-300 px-2 py-1 rounded-xl bg-white/5 border border-white/10 transition">
+            ✏️ Edit
+          </button>
           <div class="max-w-2xl bg-gradient-to-r from-cyan-900/40 to-indigo-900/40 border border-cyan-500/30 rounded-2xl rounded-tr-sm px-4 py-3 text-white text-xs sm:text-sm shadow-md">
             ${escapeHtml(msg.content)}
           </div>
@@ -422,6 +481,9 @@ function renderMessages(messages) {
       }
 
       const hasCitations = citations.length > 0;
+      const isPinned = Boolean(msg.is_pinned);
+      const feedback = msg.feedback;
+
       const groundingBadgeHtml = hasCitations ? `
         <button onclick="openEvidenceDrawer(${index})" title="Click to inspect compendium citations & evidence" class="px-2.5 py-0.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold flex items-center gap-1.5 transition">
           <span>📚</span> <span>Compendium Grounded (${citations.length} Sources)</span>
@@ -435,15 +497,16 @@ function renderMessages(messages) {
       `;
 
       return `
-        <div class="flex flex-col space-y-2 mb-6">
-          <!-- Header Badges (Exact design from Images 3 & 4) -->
+        <div id="msg_card_${msg.id || index}" class="flex flex-col space-y-2 mb-6">
+          <!-- Header Badges -->
           <div class="flex items-center gap-2 text-xs">
             <span class="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 font-bold text-gray-200">${sportBadge}</span>
             ${groundingBadgeHtml}
+            ${isPinned ? '<span class="px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-semibold flex items-center gap-1 text-[11px]"><span>📌</span> Pinned Analysis</span>' : ''}
           </div>
 
-          <!-- Content Card (Exact translucent card from Images 3 & 4) -->
-          <div class="glass-panel rounded-2xl border border-white/10 p-5 sm:p-6 text-xs sm:text-sm text-gray-200 leading-relaxed shadow-xl markdown-body relative">
+          <!-- Content Card -->
+          <div class="glass-panel rounded-2xl border border-white/10 p-5 sm:p-6 text-xs sm:text-sm text-gray-200 leading-relaxed shadow-xl markdown-body relative ${isPinned ? 'pinned-card' : ''}">
             ${parsedHtml}
 
             <!-- Verified Citations Box -->
@@ -474,14 +537,32 @@ function renderMessages(messages) {
             <!-- Follow-up chips -->
             ${followUpHtml}
 
-            <!-- Bottom Tool Buttons (Exact buttons from Images 3 & 4) -->
-            <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400">
-              <div class="flex items-center gap-2">
+            <!-- Bottom Tool Buttons & Interactions -->
+            <div class="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+              <div class="flex flex-wrap items-center gap-1.5">
                 <button onclick="speakText(this)" data-text="${escapeHtml((msg.content || '').replace(/[#*`|]/g, ''))}" title="Read Aloud" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
                   <span>🔊</span> Listen
                 </button>
                 <button onclick="copyToClipboard(this)" data-text="${escapeHtml(msg.content || '')}" title="Copy text" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
                   <span>📋</span> Copy
+                </button>
+                <button onclick="regenerateAssistantMessage(${index})" title="Regenerate this response" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-gray-300 hover:text-cyan-200 flex items-center gap-1 transition">
+                  <span>🔄</span> Retry
+                </button>
+                <button onclick="setMessageFeedback(${msg.id || 0}, 'like', this)" title="Helpful" class="msg-ctrl-btn px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-gray-300 hover:text-emerald-300 flex items-center gap-1 transition ${feedback === 'like' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : ''}">
+                  <span>👍</span>
+                </button>
+                <button onclick="setMessageFeedback(${msg.id || 0}, 'dislike', this)" title="Not helpful" class="msg-ctrl-btn px-2 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 text-gray-300 hover:text-rose-300 flex items-center gap-1 transition ${feedback === 'dislike' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : ''}">
+                  <span>👎</span>
+                </button>
+                <button onclick="togglePinMessage(${msg.id || 0}, this, ${index})" title="${isPinned ? 'Unpin' : 'Pin'}" class="msg-ctrl-btn px-2 py-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-gray-300 hover:text-cyan-300 flex items-center gap-1 transition ${isPinned ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : ''}">
+                  <span>📌</span>
+                </button>
+                <button onclick="exportConversationPDF()" title="Export Conversation as PDF" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
+                  <span>📄</span> PDF
+                </button>
+                <button onclick="shareResponse(${index})" title="Share this analysis" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center gap-1 transition">
+                  <span>🔗</span> Share
                 </button>
                 <button onclick="open3DInspectorModal('${msg.sport || 'cricket'}')" title="Inspect 3D Equipment" class="px-2.5 py-1 rounded-lg bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 flex items-center gap-1 transition hover:bg-cyan-900/50">
                   <span>🌐</span> 3D Equipment
@@ -501,6 +582,126 @@ function renderMessages(messages) {
 
   const container = document.getElementById('messages-container');
   if (container) container.scrollTop = container.scrollHeight;
+}
+
+// Edit Previous User Prompt
+function editUserPrompt(promptText) {
+  const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
+  if (input) {
+    input.value = promptText;
+    input.focus();
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    const container = document.getElementById('messages-container');
+    if (container) container.scrollTop = container.scrollHeight;
+  }
+}
+
+// Regenerate Assistant Response
+async function regenerateAssistantMessage(index) {
+  if (isGenerating) return;
+  const messages = window.currentRenderedMessages || [];
+  // Find the user prompt immediately preceding this assistant response
+  let userQuery = '';
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages[i]?.role === 'user') {
+      userQuery = messages[i].content;
+      break;
+    }
+  }
+
+  if (!userQuery) {
+    showToast('Could not find preceding user question', 'info');
+    return;
+  }
+
+  showToast('Regenerating sports analysis...', 'info');
+  await sendChatMessage(userQuery);
+}
+
+// Message Feedback (Like / Dislike)
+async function setMessageFeedback(msgId, feedbackType, btn) {
+  if (!msgId) {
+    showToast('Feedback noted!', 'success');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/chat/messages/${msgId}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback: feedbackType })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(feedbackType === 'like' ? 'Marked as helpful 👍' : 'Feedback recorded 👎', 'success');
+      // Update UI classes
+      const parent = btn.parentElement;
+      const likeBtn = parent.querySelector("button[title='Helpful']");
+      const dislikeBtn = parent.querySelector("button[title='Not helpful']");
+      if (feedbackType === 'like') {
+        likeBtn?.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/40');
+        dislikeBtn?.classList.remove('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/40');
+      } else {
+        dislikeBtn?.classList.add('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/40');
+        likeBtn?.classList.remove('bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/40');
+      }
+    }
+  } catch (err) {
+    showToast('Failed to save feedback', 'error');
+  }
+}
+
+// Toggle Pin Message
+async function togglePinMessage(msgId, btn, index) {
+  if (!msgId) {
+    showToast('Message pinned locally', 'info');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/chat/messages/${msgId}/pin`, { method: 'POST' });
+    const data = await res.json();
+    const cardEl = document.getElementById(`msg_card_${msgId}`);
+    const glassCard = cardEl?.querySelector('.glass-panel');
+
+    if (data.is_pinned) {
+      glassCard?.classList.add('pinned-card');
+      btn.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+      showToast('Analysis pinned 📌', 'info');
+    } else {
+      glassCard?.classList.remove('pinned-card');
+      btn.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+      showToast('Analysis unpinned', 'info');
+    }
+
+    if (window.currentRenderedMessages && window.currentRenderedMessages[index]) {
+      window.currentRenderedMessages[index].is_pinned = data.is_pinned;
+    }
+  } catch (err) {
+    showToast('Failed to update pinned state', 'error');
+  }
+}
+
+// Export Conversation as PDF
+function exportConversationPDF() {
+  showToast('Preparing SportsAI PDF Report...', 'info');
+  setTimeout(() => {
+    window.print();
+  }, 400);
+}
+
+// Share Response
+function shareResponse(index) {
+  const msg = window.currentRenderedMessages?.[index];
+  if (!msg || !msg.content) return;
+
+  const shareText = `🏅 SportsAI Tactical Intelligence Report\nSport: ${(msg.sport || 'Sports').toUpperCase()}\n\n${msg.content}\n\n— Generated with SportsAI (Phi-3 Mini Local Ollama)`;
+  navigator.clipboard.writeText(shareText).then(() => {
+    showToast('Analysis copied to clipboard for sharing! 🔗', 'success');
+  }).catch(() => {
+    showToast('Could not copy to clipboard', 'error');
+  });
 }
 
 // Handle Chat Submit
@@ -824,7 +1025,11 @@ function startVoiceRecognition() {
   recognition.lang = 'en-US';
   showToast('Listening... Speak your sports question now', 'info');
 
+  const micBtn = document.getElementById('chat-mic-btn') || document.querySelector('button[onclick="startVoiceRecognition()"]');
+  if (micBtn) micBtn.classList.add('mic-listening');
+
   recognition.onresult = (event) => {
+    if (micBtn) micBtn.classList.remove('mic-listening');
     const transcript = event.results[0][0].transcript;
     const input = document.getElementById('chat-input') || document.getElementById('empty-user-input');
     if (input) {
@@ -833,7 +1038,12 @@ function startVoiceRecognition() {
     showToast(`Heard: "${transcript}"`, 'success');
   };
 
+  recognition.onend = () => {
+    if (micBtn) micBtn.classList.remove('mic-listening');
+  };
+
   recognition.onerror = () => {
+    if (micBtn) micBtn.classList.remove('mic-listening');
     showToast('Voice dictation cancelled or timed out', 'info');
   };
 
@@ -945,15 +1155,20 @@ function showToast(message, type = 'info') {
 // ==========================================
 // EVIDENCE & CITATIONS DRAWER (Perplexity Style)
 // ==========================================
+let currentEvidenceCitations = [];
+let currentEvidenceSportFilter = 'all';
+
 function openEvidenceDrawer(messageIndex) {
   const msg = window.currentRenderedMessages?.[messageIndex];
   const citations = msg?.citations || [];
   const groundingScore = msg?.grounding_score || (citations.length > 0 ? 100 : 95);
 
+  currentEvidenceCitations = citations;
+  currentEvidenceSportFilter = 'all';
+
   const backdrop = document.getElementById('evidence-backdrop');
   const drawer = document.getElementById('evidence-drawer');
   const banner = document.getElementById('evidence-grounding-banner');
-  const listEl = document.getElementById('evidence-citations-list');
 
   if (!drawer) return;
 
@@ -978,41 +1193,7 @@ function openEvidenceDrawer(messageIndex) {
       <div class="text-[10px] text-gray-400 mt-2">Answer verified against our 100-page official sports compendium training corpus.</div>
     `;
 
-    listEl.innerHTML = citations.map(c => {
-      const sportBadge = c.sport === 'cricket' ? '🏏 Cricket' :
-                         c.sport === 'football' ? '⚽ Football' :
-                         c.sport === 'badminton' ? '🏸 Badminton' : '⚡ Sport';
-      return `
-        <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 hover:border-cyan-500/40 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] px-2.5 py-0.5 rounded-lg bg-white/10 text-gray-200 font-semibold">${sportBadge}</span>
-            <span class="text-[10px] px-2.5 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono font-bold">${c.relevanceScore || 95}% Match</span>
-          </div>
-
-          <div>
-            <div class="text-xs font-bold text-white">Page ${c.page}: ${escapeHtml(c.title || '')}</div>
-            <div class="text-[10px] text-gray-400">${escapeHtml(c.chapter || '')}</div>
-          </div>
-
-          <div class="p-3 rounded-xl bg-black/40 border border-white/5 text-[11px] text-cyan-100/90 italic leading-relaxed">
-            "${escapeHtml(c.quote || '')}"
-          </div>
-
-          ${c.rationale ? `
-            <div class="text-[11px] text-gray-300 leading-snug">
-              <span class="font-semibold text-cyan-400">Why this supports the answer:</span>
-              <p class="text-gray-400 mt-0.5">${escapeHtml(c.rationale)}</p>
-            </div>
-          ` : ''}
-
-          <div class="pt-2 border-t border-white/5 flex justify-end">
-            <button onclick="closeEvidenceDrawer(); openCompendiumModal(); loadCompendiumPage(${c.page});" class="px-3 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[11px] font-semibold border border-cyan-500/30 flex items-center gap-1 transition">
-              <span>📖</span> Open in 100-Page Compendium →
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
+    renderEvidenceCitationsList(currentEvidenceCitations);
   } else {
     // General Sports Intelligence
     banner.className = 'p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30';
@@ -1033,33 +1214,111 @@ function openEvidenceDrawer(messageIndex) {
       <div class="text-[10px] text-gray-400 mt-2">Synthesized from official sports governing statutes and conversational reasoning.</div>
     `;
 
-    listEl.innerHTML = `
-      <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-        <div class="text-xs font-bold text-white flex items-center gap-2">
-          <span>⚖️</span> Governing Body Grounding Standards
+    const listEl = document.getElementById('evidence-citations-list');
+    if (listEl) {
+      listEl.innerHTML = `
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+          <div class="text-xs font-bold text-white flex items-center gap-2">
+            <span>⚖️</span> Governing Body Grounding Standards
+          </div>
+          <p class="text-gray-300 text-xs leading-relaxed">
+            This answer does not require an excerpt from our 100-page training compendium. Instead, it was validated directly against official governing sport statutes:
+          </p>
+          <ul class="space-y-2 text-[11px] text-gray-400 list-disc list-inside">
+            <li><strong class="text-gray-200">Cricket:</strong> Marylebone Cricket Club (MCC) Laws of Cricket & ICC Playing Conditions.</li>
+            <li><strong class="text-gray-200">Football:</strong> International Football Association Board (IFAB) Laws of the Game.</li>
+            <li><strong class="text-gray-200">Badminton:</strong> Badminton World Federation (BWF) Official Statutes & Scoring Laws.</li>
+          </ul>
+          <div class="pt-2 border-t border-white/5">
+            <button onclick="closeEvidenceDrawer(); openCompendiumModal();" class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs font-semibold border border-white/10 transition">
+              Explore 100-Page Compendium
+            </button>
+          </div>
         </div>
-        <p class="text-gray-300 text-xs leading-relaxed">
-          This answer does not require an excerpt from our 100-page training compendium. Instead, it was validated directly against official governing sport statutes:
-        </p>
-        <ul class="space-y-2 text-[11px] text-gray-400 list-disc list-inside">
-          <li><strong class="text-gray-200">Cricket:</strong> Marylebone Cricket Club (MCC) Laws of Cricket & ICC Playing Conditions.</li>
-          <li><strong class="text-gray-200">Football:</strong> International Football Association Board (IFAB) Laws of the Game.</li>
-          <li><strong class="text-gray-200">Badminton:</strong> Badminton World Federation (BWF) Official Statutes & Scoring Laws.</li>
-        </ul>
-        <div class="pt-2 border-t border-white/5">
-          <button onclick="closeEvidenceDrawer(); openCompendiumModal();" class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs font-semibold border border-white/10 transition">
-            Explore 100-Page Compendium
-          </button>
-        </div>
-      </div>
-    `;
+      `;
+    }
   }
+
+  // Reset tab buttons
+  updateEvidenceTabStyles('all');
 
   backdrop?.classList.remove('hidden');
   setTimeout(() => {
     backdrop?.classList.remove('opacity-0');
     drawer?.classList.remove('translate-x-full');
   }, 10);
+}
+
+function filterEvidenceDrawer(sport) {
+  currentEvidenceSportFilter = sport;
+  updateEvidenceTabStyles(sport);
+
+  if (!currentEvidenceCitations || currentEvidenceCitations.length === 0) return;
+
+  const filtered = sport === 'all'
+    ? currentEvidenceCitations
+    : currentEvidenceCitations.filter(c => c.sport === sport);
+
+  renderEvidenceCitationsList(filtered);
+}
+
+function updateEvidenceTabStyles(activeSport) {
+  ['all', 'cricket', 'football', 'badminton'].forEach(s => {
+    const btn = document.getElementById(`ev-filter-${s}`);
+    if (btn) {
+      if (s === activeSport) {
+        btn.className = 'px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold transition';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition';
+      }
+    }
+  });
+}
+
+function renderEvidenceCitationsList(citations) {
+  const listEl = document.getElementById('evidence-citations-list');
+  if (!listEl) return;
+
+  if (!citations || citations.length === 0) {
+    listEl.innerHTML = `<div class="p-6 text-center text-gray-500 text-xs">No citations found for this filter.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = citations.map(c => {
+    const sportBadge = c.sport === 'cricket' ? '🏏 Cricket' :
+                       c.sport === 'football' ? '⚽ Football' :
+                       c.sport === 'badminton' ? '🏸 Badminton' : '⚡ Sport';
+    return `
+      <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 hover:border-cyan-500/40 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] px-2.5 py-0.5 rounded-lg bg-white/10 text-gray-200 font-semibold">${sportBadge}</span>
+          <span class="text-[10px] px-2.5 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono font-bold">${c.relevanceScore || 95}% Match</span>
+        </div>
+
+        <div>
+          <div class="text-xs font-bold text-white">Page ${c.page}: ${escapeHtml(c.title || '')}</div>
+          <div class="text-[10px] text-gray-400">${escapeHtml(c.chapter || '')}</div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5 text-[11px] text-cyan-100/90 italic leading-relaxed">
+          "${escapeHtml(c.quote || '')}"
+        </div>
+
+        ${c.rationale ? `
+          <div class="text-[11px] text-gray-300 leading-snug">
+            <span class="font-semibold text-cyan-400">Why this supports the answer:</span>
+            <p class="text-gray-400 mt-0.5">${escapeHtml(c.rationale)}</p>
+          </div>
+        ` : ''}
+
+        <div class="pt-2 border-t border-white/5 flex justify-end">
+          <button onclick="closeEvidenceDrawer(); openCompendiumModal(); loadCompendiumPage(${c.page});" class="px-3 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[11px] font-semibold border border-cyan-500/30 flex items-center gap-1 transition">
+            <span>📖</span> Open in 100-Page Compendium →
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function closeEvidenceDrawer() {

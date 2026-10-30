@@ -135,4 +135,71 @@ Generate the definitive head-to-head tactical scout verdict.`;
   }
 });
 
+// Full Dashboard Data (Live, Fixtures, Recent Results, Rankings)
+router.get('/dashboard-data', (req, res) => {
+  try {
+    const data = liveSportsApi.getDashboardData();
+    res.json(data);
+  } catch (err) {
+    console.error('[SportsRoutes] dashboard-data error:', err);
+    res.status(500).json({ error: 'Failed to load sports dashboard data' });
+  }
+});
+
+// Full Tactical Analysis Data (Football formations with 11 nodes, Cricket wagon wheel, Badminton heatzones)
+router.get('/tactical-data', (req, res) => {
+  try {
+    const data = liveSportsApi.getTacticalData();
+    res.json(data);
+  } catch (err) {
+    console.error('[SportsRoutes] tactical-data error:', err);
+    res.status(500).json({ error: 'Failed to load sports tactical data' });
+  }
+});
+
+// AI Tactical Board Breakdown via Phi-3 Mini
+router.post('/ai-tactical-report', async (req, res) => {
+  try {
+    const { sport, formationOrTopic, tacticalDetails } = req.body;
+    if (!sport) {
+      return res.status(400).json({ error: 'Sport is required' });
+    }
+
+    const systemPrompt = `You are a UEFA Pro License tactical coach, ICC master coach, and BWF high-performance director.
+Provide an elite, professional tactical analysis of the provided sport, formation, or technical topic in crisp GitHub Flavored Markdown.
+Include:
+1. Tactical Philosophy & Space Creation
+2. Passing / Movement Hubs & Key Transitions
+3. Pressing / Defensive Vulnerabilities & Counters
+4. Key Player Role Demands
+5. Coach's Tactical Verdict`;
+
+    const userPrompt = `SPORT: ${sport.toUpperCase()}
+FORMATION / TOPIC: ${formationOrTopic || 'General Analysis'}
+TACTICAL DATA & METRICS:
+${JSON.stringify(tacticalDetails || {}, null, 2)}
+
+Deliver a high-level masterclass tactical report.`;
+
+    const completion = await ollamaService.chatCompletion({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      preferredModel: 'phi3:latest',
+      temperature: 0.3,
+      numPredict: 450
+    });
+
+    res.json({
+      success: true,
+      report: completion.content,
+      modelUsed: completion.modelUsed
+    });
+  } catch (err) {
+    console.error('[SportsRoutes] ai-tactical-report error:', err);
+    res.status(500).json({ error: 'Failed to generate tactical report: ' + err.message });
+  }
+});
+
 export default router;

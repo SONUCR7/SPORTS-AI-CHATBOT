@@ -68,38 +68,6 @@ User Query
 
 ---
 
-## 🤗 Training the LLM Model with Hugging Face
-
-The 100-page Sports Compendium is formatted into an instruction-tuning dataset for fine-tuning any open-source causal LLM (Qwen 2.5, Llama 3.2, TinyLlama, Gemma 2, Phi-3).
-
-### 1. Generate Hugging Face Dataset
-```bash
-python training/prepare_dataset.py
-```
-Outputs:
-- `training/dataset/sports_train_chat.jsonl` (273 samples with system, user, and verified assistant messages)
-- `training/dataset/sports_val_chat.jsonl` (31 validation samples)
-- `training/dataset/sports_train_alpaca.json` (304 Alpaca format samples)
-
-### 2. Fine-Tune with Hugging Face (LoRA / SFTTrainer)
-```bash
-python training/train_huggingface.py --model_name Qwen/Qwen2.5-0.5B-Instruct --epochs 3
-```
-Options:
-- `--model_name`: Base model (`Qwen/Qwen2.5-0.5B-Instruct`, `TinyLlama/TinyLlama-1.1B-Chat-v1.0`, `meta-llama/Llama-3.2-1B-Instruct`)
-- `--epochs`: Number of epochs (default: 3)
-- `--batch_size`: Batch size (default: 2)
-- `--output_dir`: Path to save fine-tuned adapter (`models/sportsai-huggingface-llm`)
-- `--push_to_hub`: Automatically uploads weights to your Hugging Face account!
-
-### 3. One-Click Google Colab Training Notebook
-Open [`training/train_sports_llm_colab.ipynb`](training/train_sports_llm_colab.ipynb) in Google Colab to train on a **free T4 GPU** in under 5 minutes and export directly to Hugging Face Hub!
-
-### 4. Direct Chatbot Integration
-In the chat interface dropdown, select **`🤗 Hugging Face SportsLLM`** or set your `HF_TOKEN` in settings to query your fine-tuned model via Serverless Inference API!
-
----
-
 ## 🚀 Quick Start
 
 ### 1. Install Dependencies

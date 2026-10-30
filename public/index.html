@@ -93,6 +93,9 @@
       <button onclick="openPlayerMatrixModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
         <span>📊</span> <span>Player Matrix Matchups</span>
       </button>
+      <button onclick="openTacticalAnalysisModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
+        <span>♟️</span> <span>AI Tactical Analysis</span>
+      </button>
       <button onclick="open3DInspectorModal('cricket')" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 hover:text-white transition">
         <span>🌐</span> <span>3D Sports Equipment</span>
       </button>
@@ -104,17 +107,25 @@
       <span class="text-[10px] text-cyan-400">3 Active</span>
     </div>
     <div class="px-3 pb-2 flex items-center gap-1.5">
-      <button onclick="setSportFilter('cricket')" class="px-2.5 py-1 rounded-lg bg-red-950/40 border border-red-500/30 text-[11px] text-red-300 hover:bg-red-900/50 transition">🏏 Cricket</button>
-      <button onclick="setSportFilter('football')" class="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-300 hover:bg-emerald-900/50 transition">⚽ Football</button>
-      <button onclick="setSportFilter('badminton')" class="px-2.5 py-1 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 hover:bg-indigo-900/50 transition">🏸 Badminton</button>
+      <button onclick="setSportFilter('cricket')" id="domain-btn-cricket" class="px-2.5 py-1 rounded-lg bg-red-950/40 border border-red-500/30 text-[11px] text-red-300 hover:bg-red-900/50 transition">🏏 Cricket</button>
+      <button onclick="setSportFilter('football')" id="domain-btn-football" class="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-300 hover:bg-emerald-900/50 transition">⚽ Football</button>
+      <button onclick="setSportFilter('badminton')" id="domain-btn-badminton" class="px-2.5 py-1 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 hover:bg-indigo-900/50 transition">🏸 Badminton</button>
     </div>
 
-    <!-- History Section: "All" with filter icon -->
+    <!-- History Section: "All" with filter icon & Search -->
     <div class="px-4 py-2 flex items-center justify-between text-xs font-semibold text-gray-300 border-t border-white/5">
       <span>Chat History</span>
-      <button title="Filter history" class="text-gray-400 hover:text-cyan-400 transition">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+      <button onclick="clearCurrentSessionMessages()" title="Clear current chat messages" class="text-gray-400 hover:text-rose-400 transition text-[11px]">
+        Clear Chat
       </button>
+    </div>
+
+    <!-- Chat Search Box -->
+    <div class="px-3 pb-2">
+      <div class="relative">
+        <input type="text" id="chat-search-input" oninput="handleChatSearch(this.value)" placeholder="Search conversations..." class="w-full bg-white/5 border border-white/10 rounded-xl px-2.5 py-1.5 pl-7 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50">
+        <span class="absolute left-2 top-1.5 text-gray-500 text-[11px]">🔍</span>
+      </div>
     </div>
 
     <!-- Dynamic Session History List from DB -->
@@ -478,6 +489,15 @@
       </div>
     </div>
 
+    <!-- Evidence Drawer Sport Filter Tabs -->
+    <div class="px-4 py-2 border-b border-white/10 flex items-center gap-1.5 overflow-x-auto text-[11px] bg-white/[0.01]">
+      <span class="text-gray-400 font-semibold text-[10px] uppercase tracking-wider mr-1">Filter:</span>
+      <button onclick="filterEvidenceDrawer('all')" id="ev-filter-all" class="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold transition">All</button>
+      <button onclick="filterEvidenceDrawer('cricket')" id="ev-filter-cricket" class="px-2.5 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition">🏏 Cricket</button>
+      <button onclick="filterEvidenceDrawer('football')" id="ev-filter-football" class="px-2.5 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition">⚽ Football</button>
+      <button onclick="filterEvidenceDrawer('badminton')" id="ev-filter-badminton" class="px-2.5 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition">🏸 Badminton</button>
+    </div>
+
     <!-- Citations List -->
     <div id="evidence-citations-list" class="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
       <!-- Injected via JS -->
@@ -527,6 +547,15 @@
         </button>
       </div>
 
+      <!-- Dashboard Sub-Views (Live, Fixtures, Recent Results, Rankings) -->
+      <div class="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-white/[0.02] text-xs overflow-x-auto">
+        <span class="text-gray-400 font-semibold text-[10px] uppercase tracking-wider mr-1">View:</span>
+        <button onclick="switchDashboardView('live')" id="dash-view-live" class="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold transition whitespace-nowrap">⚡ Live Scores</button>
+        <button onclick="switchDashboardView('fixtures')" id="dash-view-fixtures" class="px-3 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition whitespace-nowrap">📅 Upcoming Fixtures</button>
+        <button onclick="switchDashboardView('results')" id="dash-view-results" class="px-3 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition whitespace-nowrap">🏆 Recent Results</button>
+        <button onclick="switchDashboardView('rankings')" id="dash-view-rankings" class="px-3 py-1 rounded-xl bg-white/5 text-gray-400 hover:text-white border border-white/5 transition whitespace-nowrap">📊 Official Rankings</button>
+      </div>
+
       <!-- Content Area with Active Match + AI Tactical Summary -->
       <div id="live-match-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         <!-- Rendered via JS -->
@@ -567,6 +596,46 @@
       <!-- Player Selectors & Scouting Comparison View -->
       <div id="player-matrix-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 6. AI TACTICAL ANALYSIS & PITCH BOARD MODAL -->
+  <!-- ========================================== -->
+  <div id="tactical-analysis-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-[#0f1422] border border-white/15 rounded-3xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-black/30">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 via-emerald-400 to-indigo-600 flex items-center justify-center text-white shadow-md">
+            ♟️
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-white">AI Tactical Analysis & Pitch Intelligence</h3>
+            <p class="text-xs text-gray-400">Interactive Formations, Spatial Passing Networks, Pitch Maps & xG Dynamics</p>
+          </div>
+        </div>
+
+        <button onclick="closeTacticalAnalysisModal()" class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">✕</button>
+      </div>
+
+      <!-- Tactical Sport Switcher Tabs -->
+      <div class="flex items-center gap-2 px-4 pt-3 border-b border-white/10 bg-white/[0.01]">
+        <button onclick="switchTacticalSport('football')" id="tac-tab-football" class="px-4 py-2 border-b-2 border-emerald-500 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition">
+          ⚽ Football: 4-3-3 & Pressing Zones
+        </button>
+        <button onclick="switchTacticalSport('cricket')" id="tac-tab-cricket" class="px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-red-300 text-xs font-semibold flex items-center gap-1.5 transition">
+          🏏 Cricket: Wagon Wheel & Pitch Map
+        </button>
+        <button onclick="switchTacticalSport('badminton')" id="tac-tab-badminton" class="px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition">
+          🏸 Badminton: Court Smash Heatmap
+        </button>
+      </div>
+
+      <!-- Tactical Content Area -->
+      <div id="tactical-board-content" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <!-- Rendered dynamically via JS -->
       </div>
     </div>
   </div>

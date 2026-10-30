@@ -103,6 +103,18 @@ code, pre {
   margin-bottom: 0.5rem;
 }
 
+.markdown-body h1 {
+  font-size: 1.25rem;
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.35rem;
+}
+
+.markdown-body h2 {
+  font-size: 1.15rem;
+  color: #38bdf8;
+}
+
 .markdown-body h3 {
   font-size: 1.05rem;
   color: #67e8f9;
@@ -125,6 +137,14 @@ code, pre {
   margin-bottom: 0.75rem;
 }
 
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
 .markdown-body li {
   margin-bottom: 0.35rem;
 }
@@ -132,6 +152,65 @@ code, pre {
 .markdown-body strong {
   color: #ffffff;
   font-weight: 600;
+}
+
+.markdown-body em {
+  color: #cbd5e1;
+  font-style: italic;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #00f2fe;
+  background: rgba(0, 242, 254, 0.06);
+  padding: 0.6rem 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.markdown-body code {
+  background: rgba(0, 242, 254, 0.12);
+  color: #67e8f9;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+}
+
+.markdown-body pre {
+  background: rgba(10, 14, 23, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  margin: 0.875rem 0;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: #e2e8f0;
+  padding: 0;
+  border: none;
+  font-size: 0.8125rem;
+}
+
+.markdown-body a {
+  color: #00f2fe;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.markdown-body a:hover {
+  color: #67e8f9;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.25rem 0;
 }
 
 /* Custom Markdown Table Styling */
@@ -352,4 +431,85 @@ code, pre {
   border: 1px solid rgba(239, 68, 68, 0.6);
   animation: pulse 2s infinite;
 }
+
+/* Pinned Card Highlight */
+.pinned-card {
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  box-shadow: 0 0 25px -5px rgba(251, 191, 36, 0.22) !important;
+}
+
+/* Message Interaction Action Buttons */
+.msg-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.msg-ctrl-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 242, 254, 0.35);
+  transform: translateY(-1px);
+}
+.msg-ctrl-btn.active-like {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.msg-ctrl-btn.active-dislike {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.msg-ctrl-btn.active-pin {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* Voice Dictation Active Pulse */
+@keyframes micGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.6);
+    background-color: rgba(0, 242, 254, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(0, 242, 254, 0);
+    background-color: rgba(0, 242, 254, 0.5);
+  }
+}
+.mic-listening {
+  animation: micGlow 1.2s infinite ease-out;
+  color: #00f2fe !important;
+}
+
+/* Print & PDF Export Styling */
+@media print {
+  body {
+    background: #0a0e17 !important;
+    color: #e2e8f0 !important;
+  }
+  #sidebar, #bottom-prompt-bar, header, #three-canvas-container, .msg-ctrl-btn, .suggestion-chip {
+    display: none !important;
+  }
+  #messages-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .glass-panel {
+    background: #0f1422 !important;
+    border: 1px solid #334155 !important;
+    box-shadow: none !important;
+  }
+}
+
 

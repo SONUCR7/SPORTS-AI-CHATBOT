@@ -262,13 +262,14 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
       return res.end();
     }
 
-    // 6. RAG Retrieval: Retrieve genuine compendium passages
-    let sportFilter = ['cricket', 'football', 'badminton'].includes(classification.sport)
-      ? classification.sport
-      : null;
-
+    // 6. RAG Retrieval: Retrieve genuine compendium passages with strict sport isolation
+    let sportFilter = null;
     if (classification.sport === 'multi_sports') {
-      sportFilter = null;
+      sportFilter = null; // Allow multi-sport retrieval
+    } else if (['cricket', 'football', 'badminton'].includes(classification.sport)) {
+      sportFilter = classification.sport;
+    } else if (sportPreference && ['cricket', 'football', 'badminton'].includes(sportPreference.toLowerCase())) {
+      sportFilter = sportPreference.toLowerCase();
     }
 
     const ragChunks = sportsRagService.retrieve({
@@ -281,11 +282,13 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
     const citations = ragChunks.map(c => ({
       page: c.pageNumber,
       sport: c.sport,
+      category: c.category || 'rules',
       chapter: c.chapter,
       title: c.title,
-      quote: c.content.slice(0, 180) + '...',
+      content: c.content,
+      quote: c.content.slice(0, 190) + '...',
       relevanceScore: c.relevanceScore || 95,
-      rationale: `Provides official ${c.sport.toUpperCase()} rule mandates, technical specifications, and historical records from Chapter "${c.chapter}" directly validating this answer.`
+      rationale: c.rationale || `Provides official ${c.sport.toUpperCase()} rule mandates and technical specifications from Chapter "${c.chapter}" directly validating this answer.`
     }));
 
     // Send metadata header
@@ -300,11 +303,23 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
     // 7. Assemble System Prompt & Conversation History based on Answer Mode
     let modeGuidance = '';
     if (answerMode === 'quick') {
-      modeGuidance = 'MODE: QUICK ANSWER — Provide a concise, high-density, direct summary in 1-2 punchy paragraphs with 3 key bullet points. Answer immediately without lengthy preamble.';
+      modeGuidance = `MODE: QUICK ANSWER — Provide a high-density, direct, and factual answer in 1-2 punchy paragraphs with 3 key bullet points. Do not include unnecessary filler preamble.`;
     } else if (answerMode === 'tactical') {
-      modeGuidance = 'MODE: TACTICAL ANALYSIS — Provide an elite tactical breakdown: formations, player spatial roles, game-theory decisions, aerodynamic/physical metrics, and structured comparison tables.';
+      modeGuidance = `MODE: TACTICAL ANALYSIS — Provide an elite tactical breakdown suitable for a professional sports analyst. Structure your response with:
+- Tactical Overview & Formations (e.g., 4-3-3 pressing triggers, bowling length distributions, or court geometry)
+- Spatial Mechanics & Player Roles
+- Key Turning Points / Tactical Advantages
+- Comparison Matrix / Data Table
+- Statistical & Evidence-Based Verdict`;
     } else {
-      modeGuidance = 'MODE: DETAILED EXPLANATION — Provide a comprehensive, authoritative, step-by-step breakdown covering official governing rules (MCC/IFAB/BWF), history, mechanics, and concrete examples.';
+      modeGuidance = `MODE: DETAILED EXPLANATION — Provide a comprehensive, authoritative, step-by-step breakdown. For in-depth match or analytical queries (e.g. why a team won/lost or tactical performance), structure your report into clear analyst sections:
+1. Executive Summary
+2. Match / Concept Overview
+3. Key Turning Points
+4. Player Performance & Key Metrics
+5. Tactical Analysis & Mistakes
+6. Statistical Evidence & Conclusion
+(For straightforward rule questions like "What is LBW?" or "Explain Offside", provide a clear, step-by-step breakdown with concrete examples without forcing irrelevant match sections).`;
     }
 
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence analyst specializing in Cricket, Football, and Badminton.
@@ -320,8 +335,9 @@ CORE RULES:
    - Badminton: Badminton World Federation (BWF) Statutes (e.g., 1.15m fixed service height, 21-point rally scoring).
 3. CLEAN FORMATTING: Use bold markdown headers (###), bullet points, and neat comparison tables where appropriate.
 4. CONVERSATIONAL MEMORY: Pay close attention to previous messages in this conversation. If the user asks a follow-up question (e.g., "Give me an example", "Explain more", "Compare them"), maintain full context without asking them to repeat themselves.
+5. HONEST FACTUAL GROUNDING: Prioritize the verified compendium knowledge base. Never invent player statistics or fabricate match records. If verified information is unavailable in your knowledge base or official statutes, state clearly: "I couldn't find sufficient verified information in the available SportsAI knowledge base to answer this accurately."
 ${ragChunks.length > 0 ? `\nOFFICIAL VERIFIED COMPENDIUM KNOWLEDGE BASE:\n` + ragChunks.map(c => `[Page ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content.slice(0, 320)}...`).join('\n\n') : ''}
-5. FOLLOW-UP SUGGESTIONS: Always end your response with 3 relevant, clickable follow-up topic suggestions formatted exactly like this:
+6. FOLLOW-UP SUGGESTIONS: Always end your response with 3 relevant, clickable follow-up topic suggestions formatted exactly like this:
 Want to learn more?
 ↳ [Specific follow-up question 1]
 ↳ [Specific follow-up question 2]
@@ -525,6 +541,70 @@ Want to learn more?
   } catch (err) {
     console.error('[Chat] Message pipeline error:', err);
     res.status(500).json({ error: 'Pipeline execution failed: ' + err.message });
+  }
+});
+
+// Search chat history across sessions and messages
+router.get('/sessions/search', async (req, res) => {
+  try {
+    const { userId, query } = req.query;
+    if (!userId || !query) {
+      return res.status(400).json({ error: 'userId and query are required' });
+    }
+    const results = await dbManager.searchUserSessions(userId, query);
+    res.json({ success: true, sessions: results });
+  } catch (err) {
+    console.error('[Chat] Search sessions error:', err);
+    res.status(500).json({ error: 'Failed to search sessions' });
+  }
+});
+
+// Toggle pin session
+router.post('/sessions/:id/pin', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await dbManager.togglePinSession(id);
+    res.json({ success: true, session: updated });
+  } catch (err) {
+    console.error('[Chat] Pin session error:', err);
+    res.status(500).json({ error: 'Failed to toggle pin on session' });
+  }
+});
+
+// Clear messages in session
+router.post('/sessions/:id/clear', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dbManager.clearSessionMessages(id);
+    res.json({ success: true, message: 'Session messages cleared' });
+  } catch (err) {
+    console.error('[Chat] Clear session error:', err);
+    res.status(500).json({ error: 'Failed to clear session messages' });
+  }
+});
+
+// Toggle pin message
+router.post('/messages/:id/pin', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await dbManager.togglePinMessage(id);
+    res.json({ success: true, message: updated });
+  } catch (err) {
+    console.error('[Chat] Pin message error:', err);
+    res.status(500).json({ error: 'Failed to toggle pin on message' });
+  }
+});
+
+// Submit thumbs up / down feedback
+router.post('/messages/:id/feedback', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { feedback } = req.body; // 'like' | 'dislike' | null
+    const updated = await dbManager.setMessageFeedback(id, feedback);
+    res.json({ success: true, message: updated });
+  } catch (err) {
+    console.error('[Chat] Message feedback error:', err);
+    res.status(500).json({ error: 'Failed to update feedback' });
   }
 });
 
