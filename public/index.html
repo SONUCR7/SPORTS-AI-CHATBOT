@@ -185,14 +185,17 @@
           </button>
           
           <div id="model-dropdown" class="hidden absolute left-0 top-10 w-64 bg-[#101624] border border-white/15 rounded-2xl shadow-2xl p-2 z-40 text-xs backdrop-blur-xl">
-            <div class="px-2 py-1 text-[10px] uppercase font-bold text-gray-400 tracking-wider">Select Intelligence Model</div>
+            <div class="px-2 py-1 text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center justify-between">
+              <span>Select Intelligence Model</span>
+              <button onclick="checkOllamaStatus();" title="Refresh Model Status" class="text-cyan-400 hover:text-cyan-300 transition">🔄 Refresh</button>
+            </div>
             <button onclick="selectModel('phi3:latest')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-cyan-500/15 text-cyan-300 flex items-center justify-between font-medium">
               <span>🦙 Phi-3 Mini (3.8B)</span>
-              <span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200">Primary</span>
+              <span id="phi3-status-badge" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200">Primary</span>
             </button>
             <button onclick="selectModel('qwen3:4b')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-purple-500/15 text-purple-300 flex items-center justify-between">
               <span>🧠 Qwen-3 (4B)</span>
-              <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200">Secondary</span>
+              <span id="qwen-status-badge" class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200">Secondary</span>
             </button>
           </div>
         </div>
@@ -660,8 +663,8 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/app.js?v=3.0"></script>
-  <script src="js/three-scene.js?v=3.5"></script>
-  <script src="js/compendium-modal.js?v=2.0"></script>
+  <script src="js/app.js?v=4.2"></script>
+  <script src="js/three-scene.js?v=4.2"></script>
+  <script src="js/compendium-modal.js?v=4.2"></script>
 </body>
 </html>

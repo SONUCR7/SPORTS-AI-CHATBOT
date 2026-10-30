@@ -1326,20 +1326,121 @@ async function generateAIScoutVerdict() {
 // ==========================================
 // 5. AI TACTICAL ANALYSIS & PITCH BOARDS
 // ==========================================
-let tacticalDataCache = null;
+const defaultTacticalData = {
+  football: {
+    formations: {
+      '4-3-3': {
+        name: '4-3-3 Tiki-Taka / Juego de Posición',
+        philosophy: 'Positional overload, third-man running, high defensive line, and numerical superiority in central half-spaces.',
+        pressingZone: 'High Press (Opponent Half)',
+        xGDistribution: { penaltyBox: '72%', outsideBox: '18%', setPiece: '10%' },
+        passingHubs: ['Pivot (DM)', 'Inverted Fullbacks', 'False 9 / Free 8s'],
+        players: [
+          { num: 1, role: 'GK', label: 'Sweeper Keeper', x: 50, y: 92 },
+          { num: 2, role: 'RB', label: 'Inverted RB', x: 82, y: 74 },
+          { num: 4, role: 'CB', label: 'Ball-Playing CB', x: 62, y: 80 },
+          { num: 5, role: 'CB', label: 'Covering CB', x: 38, y: 80 },
+          { num: 3, role: 'LB', label: 'Overlapping LB', x: 18, y: 74 },
+          { num: 6, role: 'DM', label: 'Deep Regista', x: 50, y: 60 },
+          { num: 8, role: 'CM', label: 'Free 8 (Right)', x: 68, y: 46 },
+          { num: 10, role: 'CM', label: 'Playmaker 8 (Left)', x: 32, y: 46 },
+          { num: 7, role: 'RW', label: 'Touchline Winger', x: 85, y: 24 },
+          { num: 9, role: 'CF', label: 'False 9 / Striker', x: 50, y: 18 },
+          { num: 11, role: 'LW', label: 'Inside Forward', x: 15, y: 24 }
+        ]
+      },
+      '4-2-3-1': {
+        name: '4-2-3-1 Gegenpressing (Heavy-Metal Football)',
+        philosophy: 'Immediate counter-pressing within 5 seconds of ball loss, vertical line-breaking passes, and high-tempo direct transitions.',
+        pressingZone: 'Mid-to-High Press with Pressing Triggers',
+        xGDistribution: { penaltyBox: '65%', counterAttack: '25%', setPiece: '10%' },
+        passingHubs: ['Double Pivot', 'Central Number 10'],
+        players: [
+          { num: 1, role: 'GK', label: 'Goalkeeper', x: 50, y: 92 },
+          { num: 2, role: 'RB', label: 'Fullback', x: 82, y: 76 },
+          { num: 4, role: 'CB', label: 'Stopper CB', x: 62, y: 81 },
+          { num: 5, role: 'CB', label: 'Pacey CB', x: 38, y: 81 },
+          { num: 3, role: 'LB', label: 'Fullback', x: 18, y: 76 },
+          { num: 6, role: 'DM', label: 'Ball-Winning DM', x: 62, y: 62 },
+          { num: 8, role: 'DM', label: 'Box-to-Box DM', x: 38, y: 62 },
+          { num: 7, role: 'RAM', label: 'Wide Attacker', x: 78, y: 38 },
+          { num: 10, role: 'CAM', label: 'Shadow Striker', x: 50, y: 34 },
+          { num: 11, role: 'LAM', label: 'Wide Attacker', x: 22, y: 38 },
+          { num: 9, role: 'ST', label: 'Target Striker', x: 50, y: 16 }
+        ]
+      },
+      '3-5-2': {
+        name: '3-5-2 / 3-4-2-1 Wing-Back Overload',
+        philosophy: 'Defensive solidity with back 5 in low block, transitioning into wide overloads via attacking wing-backs and twin strikers.',
+        pressingZone: 'Mid-Block & Fast Break',
+        xGDistribution: { crossHeaders: '40%', penaltyBox: '45%', longShots: '15%' },
+        passingHubs: ['Wide Wing-Backs', 'Central Striker Pair'],
+        players: [
+          { num: 1, role: 'GK', label: 'Goalkeeper', x: 50, y: 92 },
+          { num: 4, role: 'RCB', label: 'Right Stopper', x: 72, y: 80 },
+          { num: 5, role: 'CCB', label: 'Sweeper CB', x: 50, y: 83 },
+          { num: 3, role: 'LCB', label: 'Left Stopper', x: 28, y: 80 },
+          { num: 2, role: 'RWB', label: 'Wing-Back', x: 88, y: 52 },
+          { num: 6, role: 'CM', label: 'Central Anchor', x: 50, y: 56 },
+          { num: 8, role: 'CM', label: 'Mezzala', x: 65, y: 48 },
+          { num: 10, role: 'CM', label: 'Mezzala', x: 35, y: 48 },
+          { num: 7, role: 'LWB', label: 'Wing-Back', x: 12, y: 52 },
+          { num: 9, role: 'ST', label: 'Striker Right', x: 62, y: 20 },
+          { num: 11, role: 'ST', label: 'Striker Left', x: 38, y: 20 }
+        ]
+      }
+    }
+  },
+  cricket: {
+    wagonWheel: {
+      sectors: [
+        { name: 'Cover & Extra Cover', angle: '30° to 75°', runs: '28%', boundaries: 14 },
+        { name: 'Point & Backward Point', angle: '75° to 110°', runs: '18%', boundaries: 8 },
+        { name: 'Third Man & Gulleys', angle: '110° to 150°', runs: '8%', boundaries: 3 },
+        { name: 'Fine Leg & Behind', angle: '150° to 210°', runs: '12%', boundaries: 5 },
+        { name: 'Square Leg & Deep Square', angle: '210° to 250°', runs: '16%', boundaries: 9 },
+        { name: 'Midwicket & Cow Corner', angle: '250° to 300°', runs: '22%', boundaries: 11 },
+        { name: 'Long On & Straight', angle: '300° to 330°', runs: '14%', boundaries: 7 },
+        { name: 'Long Off & Straight', angle: '330° to 30°', runs: '16%', boundaries: 8 }
+      ]
+    },
+    bowlingLengthMap: {
+      pitchLength: '22 Yards (20.12m)',
+      zones: [
+        { name: 'Yorker Zone (0 - 2m from popping crease)', percentage: '18%', wicketProbability: 'High (LBW / Bowled)' },
+        { name: 'Full Length (2 - 4m)', percentage: '32%', wicketProbability: 'Caught behind / Slips' },
+        { name: 'Good Length (4 - 7m Corridor of Uncertainty)', percentage: '38%', wicketProbability: 'Highest Edge Percentage' },
+        { name: 'Short & Bouncer (7 - 10m+)', percentage: '12%', wicketProbability: 'Top edge / Pull hook' }
+      ]
+    }
+  },
+  badminton: {
+    courtDimensions: '13.4m Length x 6.1m Width (Doubles) / 5.18m (Singles)',
+    smashDistribution: [
+      { zone: 'Forehand Deep Tramline', percentage: '34%', avgSpeed: '395 km/h', winnerRate: '68%' },
+      { zone: 'Body Smash (Hip & Shoulder)', percentage: '28%', avgSpeed: '412 km/h', winnerRate: '74%' },
+      { zone: 'Straight Line Down Tramline', percentage: '24%', avgSpeed: '425 km/h', winnerRate: '79%' },
+      { zone: 'Cross-court Slice to Net', percentage: '14%', avgSpeed: '210 km/h', winnerRate: '82%' }
+    ],
+    footworkHubs: [
+      { hub: 'Center T-Junction (Base Hub)', description: 'Split-step launch zone allowing equal reaction time to all 4 corners.' },
+      { hub: 'Forecourt Net Steps', description: 'Chassé lunges to tumbling net shots, keeping racket above tape level.' },
+      { hub: 'Rearcourt Scissor Kick', description: 'Deep pivot transfer weight onto dominant foot for explosive jump-smash.' }
+    ]
+  }
+};
+
+let tacticalDataCache = defaultTacticalData;
 let activeTacticalSport = 'football'; // 'football' | 'cricket' | 'badminton'
 let activeFootballFormation = '4-3-3'; // '4-3-3' | '4-2-3-1' | '3-5-2'
 
-async function openTacticalAnalysisModal() {
+function openTacticalAnalysisModal() {
   const modal = document.getElementById('tactical-analysis-modal');
   if (!modal) return;
   modal.classList.remove('hidden');
 
-  if (!tacticalDataCache) {
-    await fetchTacticalData();
-  } else {
-    renderTacticalBoard();
-  }
+  renderTacticalBoard();
+  fetchTacticalData();
 }
 
 function closeTacticalAnalysisModal() {
@@ -1348,16 +1449,17 @@ function closeTacticalAnalysisModal() {
 }
 
 async function fetchTacticalData() {
-  const contentEl = document.getElementById('tactical-board-content');
-  if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-cyan-400">Loading pitch tactical models and spatial datasets...</div>`;
-
   try {
     const res = await fetch('/api/sports/tactical-data');
-    tacticalDataCache = await res.json();
-    renderTacticalBoard();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.football || data.cricket || data.badminton)) {
+        tacticalDataCache = data;
+        renderTacticalBoard();
+      }
+    }
   } catch (err) {
-    console.error('Failed to load tactical data:', err);
-    if (contentEl) contentEl.innerHTML = `<div class="p-8 text-center text-rose-400">Failed to load tactical dataset.</div>`;
+    console.warn('[TacticalBoard] Using embedded tactical dataset:', err.message);
   }
 }
 
@@ -1388,7 +1490,11 @@ function setFootballFormation(formation) {
 
 function renderTacticalBoard() {
   const contentEl = document.getElementById('tactical-board-content');
-  if (!contentEl || !tacticalDataCache) return;
+  if (!contentEl) return;
+
+  if (!tacticalDataCache) {
+    tacticalDataCache = defaultTacticalData;
+  }
 
   if (activeTacticalSport === 'football') {
     renderFootballTacticalBoard(contentEl);

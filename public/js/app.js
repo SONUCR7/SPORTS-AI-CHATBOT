@@ -101,32 +101,82 @@ function setupTextareaAutoResize() {
 }
 
 // Check Ollama Service & Installed Models
-async function checkOllamaStatus() {
+let previousOllamaState = null;
+
+async function checkOllamaStatus(silent = false) {
   try {
     const res = await fetch('/api/chat/ollama/status');
     const data = await res.json();
 
+    const dot = document.querySelector('#header-model-btn .rounded-full');
+    const phi3Badge = document.getElementById('phi3-status-badge');
+    const qwenBadge = document.getElementById('qwen-status-badge');
+
     if (data.connected) {
+      if (phi3Badge) {
+        phi3Badge.innerText = data.primaryAvailable ? '● Ready (Primary)' : '○ Not pulled';
+        phi3Badge.className = data.primaryAvailable 
+          ? 'text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-medium'
+          : 'text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300';
+      }
+      if (qwenBadge) {
+        qwenBadge.innerText = data.secondaryAvailable ? '● Ready (Secondary)' : '○ Not pulled';
+        qwenBadge.className = data.secondaryAvailable
+          ? 'text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium'
+          : 'text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300';
+      }
+
       if (data.primaryAvailable) {
-        activeModel = 'phi3:latest';
+        activeModel = data.activeModel || 'phi3:latest';
         updateModelUI('Phi-3 Mini (Ollama)');
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse';
+        if (!silent && (previousOllamaState === 'disconnected' || previousOllamaState === 'no_models')) {
+          showToast('Ollama connected: Microsoft Phi-3 Mini active!', 'success');
+        }
+        previousOllamaState = 'phi3';
       } else if (data.secondaryAvailable) {
-        activeModel = 'qwen3:4b';
+        activeModel = data.activeModel || 'qwen3:4b';
         updateModelUI('Qwen-3 (Ollama)');
-        showToast('Phi-3 not found in Ollama. Active model: Qwen-3', 'info');
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-pulse';
+        if (!silent && (previousOllamaState === 'disconnected' || previousOllamaState === 'no_models')) {
+          showToast('Phi-3 not found in Ollama. Active model: Qwen-3', 'info');
+        }
+        previousOllamaState = 'qwen';
       } else {
         updateModelUI('Ollama Offline Models');
-        showToast('Neither phi3 nor qwen3:4b found. Run: "ollama pull phi3"', 'error');
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        if (!silent && previousOllamaState !== 'no_models') {
+          showToast('Neither phi3 nor qwen3:4b found. Run: "ollama pull phi3"', 'error');
+        }
+        previousOllamaState = 'no_models';
       }
     } else {
       updateModelUI('Ollama Disconnected');
-      showToast('Ollama is not running. Please start Ollama on port 11434', 'error');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+      if (!silent && previousOllamaState !== 'disconnected') {
+        showToast('Ollama is not running. Please start Ollama on port 11434', 'error');
+      }
+      previousOllamaState = 'disconnected';
     }
+    return data;
   } catch (err) {
     console.warn('Ollama status check failed:', err);
     updateModelUI('Phi-3 Mini (Ollama)');
+    return null;
   }
 }
+
+// Auto-detect newly pulled models when user focuses browser window back from CMD
+window.addEventListener('focus', () => {
+  checkOllamaStatus(true);
+});
+
+// Periodic probe if models were previously missing or Ollama was starting
+setInterval(() => {
+  if (previousOllamaState === 'disconnected' || previousOllamaState === 'no_models') {
+    checkOllamaStatus(true);
+  }
+}, 10000);
 
 function updateModelUI(label) {
   const headerLabel = document.getElementById('header-model-label');
@@ -990,7 +1040,12 @@ function setQueryMode(mode) {
 // Model Dropdown
 function toggleModelDropdown() {
   const dd = document.getElementById('model-dropdown');
-  if (dd) dd.classList.toggle('hidden');
+  if (dd) {
+    dd.classList.toggle('hidden');
+    if (!dd.classList.contains('hidden')) {
+      checkOllamaStatus(true);
+    }
+  }
 }
 
 function selectModel(modelName) {

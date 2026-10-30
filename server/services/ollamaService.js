@@ -5,7 +5,7 @@
  */
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
-const PRIMARY_MODEL = process.env.PRIMARY_MODEL || 'phi3:latest';
+const PRIMARY_MODEL = process.env.PRIMARY_MODEL || process.env.OLLAMA_MODEL || 'phi3:latest';
 const SECONDARY_MODEL = process.env.SECONDARY_MODEL || 'qwen3:4b';
 
 class OllamaService {
@@ -43,18 +43,25 @@ class OllamaService {
       this.installedModels = models;
       this.lastChecked = Date.now();
 
-      const primaryAvailable = models.some(m => m.includes('phi3'));
-      const secondaryAvailable = models.some(m => m.includes('qwen'));
+      const matchedPrimary = models.find(m => m.includes('phi3') || m.includes('phi-3'));
+      const matchedSecondary = models.find(m => m.includes('qwen'));
+
+      const primaryAvailable = !!matchedPrimary;
+      const secondaryAvailable = !!matchedSecondary;
+
+      const activeModel = primaryAvailable
+        ? (matchedPrimary || this.primaryModel)
+        : (secondaryAvailable ? (matchedSecondary || this.secondaryModel) : (models[0] || this.primaryModel));
 
       return {
         connected: true,
         host: this.host,
         models,
-        primaryModel: this.primaryModel,
-        secondaryModel: this.secondaryModel,
+        primaryModel: matchedPrimary || this.primaryModel,
+        secondaryModel: matchedSecondary || this.secondaryModel,
         primaryAvailable,
         secondaryAvailable,
-        activeModel: primaryAvailable ? this.primaryModel : (secondaryAvailable ? this.secondaryModel : this.primaryModel)
+        activeModel
       };
     } catch (err) {
       return {
@@ -88,25 +95,55 @@ class OllamaService {
 
     // Normalize model string
     if (targetModel.includes('phi3') || targetModel === 'primary') {
-      targetModel = this.primaryModel;
+      const match = status.models.find(m => m.includes('phi3') || m.includes('phi-3'));
+      targetModel = match || this.primaryModel;
     } else if (targetModel.includes('qwen') || targetModel === 'secondary') {
-      targetModel = this.secondaryModel;
+      const match = status.models.find(m => m.includes('qwen'));
+      targetModel = match || this.secondaryModel;
     }
 
     // Check availability
-    const isTargetAvailable = status.models.some(m => m === targetModel || m.startsWith(targetModel.split(':')[0]));
+    const isTargetAvailable = status.models.some(m => 
+      m === targetModel || 
+      m.startsWith(targetModel.split(':')[0]) ||
+      (targetModel.includes('phi3') && (m.includes('phi3') || m.includes('phi-3'))) ||
+      (targetModel.includes('qwen') && m.includes('qwen'))
+    );
 
     if (isTargetAvailable) {
       return { model: targetModel, fallbackOccurred: false, connected: true };
     }
 
     // If target was Phi-3 and it's missing, but Qwen is available -> fallback to Qwen
-    if (targetModel === this.primaryModel && status.secondaryAvailable) {
-      console.warn(`[Ollama] Primary model ${this.primaryModel} not found. Falling back to secondary model ${this.secondaryModel}`);
+    if ((targetModel.includes('phi3') || targetModel === this.primaryModel) && status.secondaryAvailable) {
+      const fallbackModel = status.models.find(m => m.includes('qwen')) || this.secondaryModel;
+      console.warn(`[Ollama] Primary model ${this.primaryModel} not found. Falling back to secondary model ${fallbackModel}`);
       return {
-        model: this.secondaryModel,
+        model: fallbackModel,
         fallbackOccurred: true,
-        fallbackReason: `${this.primaryModel} is not installed. Active model switched to secondary: ${this.secondaryModel}.`,
+        fallbackReason: `Phi-3 Mini is not installed. Switched to secondary model: ${fallbackModel}.`,
+        connected: true
+      };
+    }
+
+    // If target was Qwen and it's missing, but Phi-3 is available -> fallback to Phi-3
+    if (targetModel.includes('qwen') && status.primaryAvailable) {
+      const fallbackModel = status.models.find(m => m.includes('phi3') || m.includes('phi-3')) || this.primaryModel;
+      return {
+        model: fallbackModel,
+        fallbackOccurred: true,
+        fallbackReason: `Qwen is not installed. Switched to primary model: ${fallbackModel}.`,
+        connected: true
+      };
+    }
+
+    // Any other installed model in Ollama as universal fallback
+    if (status.models.length > 0) {
+      const fallbackModel = status.models[0];
+      return {
+        model: fallbackModel,
+        fallbackOccurred: true,
+        fallbackReason: `Preferred model is not installed. Using available model: ${fallbackModel}.`,
         connected: true
       };
     }
