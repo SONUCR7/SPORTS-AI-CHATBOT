@@ -1,6 +1,7 @@
 import express from 'express';
 import { sportsRagService } from '../rag/sportsRagService.js';
 import { liveSportsApi } from '../services/liveSportsApi.js';
+import { sportsDataService } from '../services/sportsDataService.js';
 import { ollamaService } from '../services/ollamaService.js';
 
 const router = express.Router();
@@ -28,10 +29,10 @@ router.get('/live', (req, res) => {
   res.json({ sport, liveData });
 });
 
-// Full Live Match Center Data (Cricket, Football, Badminton)
+// Full Live Match Center Data (Cricket, Football, Badminton via Unified Real-Time Service)
 router.get('/live-matches', async (req, res) => {
   try {
-    const data = await liveSportsApi.getLiveMatches(req.query.refresh === 'true');
+    const data = await sportsDataService.getLiveMatches(req.query.sport || 'all', req.query.refresh === 'true');
     res.json(data);
   } catch (err) {
     console.error('[SportsRoutes] live-matches error:', err);
@@ -47,6 +48,18 @@ router.get('/players', (req, res) => {
   } catch (err) {
     console.error('[SportsRoutes] players error:', err);
     res.status(500).json({ error: 'Failed to load player matrix' });
+  }
+});
+
+// Standings endpoint for Football (Premier League, LaLiga, Bundesliga, UCL)
+router.get('/standings/:league?', async (req, res) => {
+  try {
+    const league = req.params.league || req.query.league || 'epl';
+    const data = await sportsDataService.getFootballStandings(league, req.query.refresh === 'true');
+    res.json(data);
+  } catch (err) {
+    console.error('[SportsRoutes] standings error:', err);
+    res.status(500).json({ error: 'Failed to load league standings' });
   }
 });
 
@@ -138,7 +151,7 @@ Generate the definitive head-to-head tactical scout verdict.`;
 // Full Dashboard Data (Live, Fixtures, Recent Results, Rankings)
 router.get('/dashboard-data', async (req, res) => {
   try {
-    const data = await liveSportsApi.getDashboardData(req.query.refresh === 'true');
+    const data = await sportsDataService.getDashboardData(req.query.refresh === 'true');
     res.json(data);
   } catch (err) {
     console.error('[SportsRoutes] dashboard-data error:', err);

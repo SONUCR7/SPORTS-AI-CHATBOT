@@ -7,6 +7,7 @@
 import { classifySportsQuery, generateScopeRefusal } from './sportsClassifier.js';
 import { sportsRagService } from '../rag/sportsRagService.js';
 import { liveSportsApi } from '../services/liveSportsApi.js';
+import { sportsDataService } from '../services/sportsDataService.js';
 import { llmService } from '../services/llmService.js';
 import { verifyGrounding } from './antiHallucination.js';
 
@@ -87,11 +88,8 @@ I am your **Zero-Hallucination Sports Analyst**, trained and grounded on a compr
       topK: state.classification.sport === 'multi_sports' ? 6 : 4
     });
 
-    // Step 3: Live Sports Enrichment Node
-    const isLiveQuery = /live|current|ranking|standings|upcoming|champion|2024|2025|points table/i.test(state.query);
-    if (isLiveQuery) {
-      state.liveContext = liveSportsApi.getLiveSportsContext(state.classification.sport);
-    }
+    // Step 3: Real-Time Sports Enrichment Node (OpenCricket, API-Football & Badminton API)
+    state.liveContext = await sportsDataService.getRealTimeContextForQuery(state.query, state.classification.sport);
 
     // Step 4: Strict Prompt & Grounded Synthesis Node
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence engine specializing in Cricket, Football, and Badminton.

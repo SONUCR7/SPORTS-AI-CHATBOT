@@ -3,6 +3,7 @@ import { dbManager } from '../db/database.js';
 import { sportsGraph } from '../langgraph/sportsGraph.js';
 import { classifySportsQuery, generateScopeRefusal } from '../langgraph/sportsClassifier.js';
 import { sportsRagService } from '../rag/sportsRagService.js';
+import { sportsDataService } from '../services/sportsDataService.js';
 import { ollamaService } from '../services/ollamaService.js';
 
 const router = express.Router();
@@ -278,6 +279,9 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
       topK: classification.sport === 'multi_sports' ? 6 : 4
     });
 
+    // Real-Time Sports Feed Enrichment (OpenCricket, API-Football & Badminton API)
+    const realTimeContext = await sportsDataService.getRealTimeContextForQuery(query, classification.sport);
+
     // Citations are ONLY generated if genuine chunks matched (never fake Zidane page 57!)
     const citations = ragChunks.map(c => ({
       page: c.pageNumber,
@@ -297,7 +301,8 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
       model: model || 'phi3:latest',
       groundingScore: citations.length > 0 ? 100 : 95,
       citations,
-      answerMode
+      answerMode,
+      realTimeSource: realTimeContext.queryIntent?.length > 0 ? 'Live Sports API Feed Active' : null
     })}\n\n`);
 
     // 7. Assemble System Prompt & Conversation History based on Answer Mode
@@ -324,20 +329,29 @@ I am your **Zero-Hallucination Sports Analyst**, powered by Microsoft **Phi-3 Mi
 
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence analyst specializing in Cricket, Football, and Badminton.
 You communicate naturally, articulately, and fluently, formatted in clean GitHub-style Markdown.
+CURRENT SERVER TIME: ${realTimeContext.serverTimeIst} (IST) / ${realTimeContext.serverTimeUtc} (UTC)
 
 ${modeGuidance}
 
 CORE RULES:
 1. DIRECT ANSWER: Answer the user's specific question directly, conversationally, and accurately.
-2. OFFICIAL ACCURACY: Ground rules strictly in official laws:
+2. REAL-TIME DATA ACCURACY: When asked about current matches, live scores, upcoming fixtures, league standings, or recent tournament results, you MUST use the verified real-time sports feed below.
+   - Do NOT invent scores or imagine matches.
+   - For Football, use the official Premier League, LaLiga, Bundesliga, or Champions League standings and live match minute events provided.
+   - For Cricket, use the real-time scorecards (innings, runs, wickets, overs, current batters, bowler, recent balls).
+   - For Badminton, use the BWF World Rankings and tournament live game scores.
+   - If no live match is currently in play for the requested sport, state honestly: "No live matches are currently in progress for [sport] as of [timestamp]."
+   - Always mention the source attribution (e.g., "Source: API-Football Verified Feed" or "OpenCricket Live Data").
+3. OFFICIAL ACCURACY FOR RULES & HISTORICAL KNOWLEDGE: Ground rules and history strictly in official laws:
    - Cricket: Marylebone Cricket Club (MCC) Laws of Cricket (e.g., Law 36 for LBW, DRS ball-tracking protocols).
    - Football: International Football Association Board (IFAB) Laws of the Game (e.g., Law 11 Offside, VAR protocols).
    - Badminton: Badminton World Federation (BWF) Statutes (e.g., 1.15m fixed service height, 21-point rally scoring).
-3. CLEAN FORMATTING: Use bold markdown headers (###), bullet points, and neat comparison tables where appropriate.
-4. CONVERSATIONAL MEMORY: Pay close attention to previous messages in this conversation. If the user asks a follow-up question (e.g., "Give me an example", "Explain more", "Compare them"), maintain full context without asking them to repeat themselves.
-5. HONEST FACTUAL GROUNDING: Prioritize the verified compendium knowledge base. Never invent player statistics or fabricate match records. If verified information is unavailable in your knowledge base or official statutes, state clearly: "I couldn't find sufficient verified information in the available SportsAI knowledge base to answer this accurately."
+4. CLEAN FORMATTING: Use bold markdown headers (###), bullet points, and neat comparison tables where appropriate.
+5. CONVERSATIONAL MEMORY: Pay close attention to previous messages in this conversation. If the user asks a follow-up question (e.g., "Give me an example", "Explain more", "Compare them"), maintain full context without asking them to repeat themselves.
+6. HONEST FACTUAL GROUNDING: Prioritize the verified compendium knowledge base and live sports feed. Never invent player statistics or fabricate match records. If verified information is unavailable, state clearly what is known and what cannot be verified.
+${realTimeContext.queryIntent && realTimeContext.queryIntent.length > 0 ? `\nREAL-TIME VERIFIED SPORTS FEED (LIVE DATA):\n` + JSON.stringify(realTimeContext, null, 2) + `\n` : ''}
 ${ragChunks.length > 0 ? `\nOFFICIAL VERIFIED COMPENDIUM KNOWLEDGE BASE:\n` + ragChunks.map(c => `[Page ${c.pageNumber}: ${c.title} (${c.chapter})]\n${c.content.slice(0, 320)}...`).join('\n\n') : ''}
-6. FOLLOW-UP SUGGESTIONS: Always end your response with 3 relevant, clickable follow-up topic suggestions formatted exactly like this:
+7. FOLLOW-UP SUGGESTIONS: Always end your response with 3 relevant, clickable follow-up topic suggestions formatted exactly like this:
 Want to learn more?
 ↳ [Specific follow-up question 1]
 ↳ [Specific follow-up question 2]
@@ -459,6 +473,8 @@ router.post('/message', async (req, res) => {
       topK: 4
     });
 
+    const realTimeContext = await sportsDataService.getRealTimeContextForQuery(query, classification.sport);
+
     const citations = ragChunks.map(c => ({
       page: c.pageNumber,
       sport: c.sport,
@@ -480,10 +496,13 @@ router.post('/message', async (req, res) => {
 
     // Build prompt & messages
     const systemPrompt = `You are SportsAI, an elite zero-hallucination sports intelligence analyst specializing in Cricket, Football, and Badminton.
+CURRENT SERVER TIME: ${realTimeContext.serverTimeIst} (IST) / ${realTimeContext.serverTimeUtc} (UTC)
 ${modeGuidance}
+REAL-TIME DATA ACCURACY: When asked about current matches, live scores, upcoming fixtures, league standings, or recent tournament results, you MUST use the verified real-time sports feed below. Never invent scores or repeat old 2024 results as ongoing matches.
 Ground rules in official MCC (Cricket), IFAB (Football), and BWF (Badminton) laws.
 Clean Markdown formatting with headers (###) and comparison tables where useful.
 Maintain conversational context from prior dialogue.
+${realTimeContext.queryIntent && realTimeContext.queryIntent.length > 0 ? `\nREAL-TIME VERIFIED SPORTS FEED (LIVE DATA):\n` + JSON.stringify(realTimeContext, null, 2) + `\n` : ''}
 ${ragChunks.length > 0 ? `\nOFFICIAL VERIFIED COMPENDIUM KNOWLEDGE:\n` + ragChunks.map(c => `[Page ${c.pageNumber}: ${c.title}]\n${c.content.slice(0, 300)}...`).join('\n\n') : ''}
 End with:
 Want to learn more?

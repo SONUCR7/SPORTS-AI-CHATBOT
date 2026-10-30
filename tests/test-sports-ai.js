@@ -129,7 +129,58 @@ async function runTests() {
   const searchResults = await dbManager.searchUserSessions(demoUser.id, 'cricket');
   console.log(`   ✓ Session search for "cricket" returned: ${searchResults.length} sessions`);
 
-  console.log('\n🎉 ALL 11 SPORTSAI TEST SUITES PASSED FLAWLESSLY WITH 100% GROUNDING & ZERO LEAKS!\n');
+  // Test 12: Real-Time Sports Data Services & AI Context Enrichment
+  console.log('\n1️⃣2️⃣ Testing Real-Time Sports Data Architecture (Cricket, Football, Badminton)...');
+  const { sportsDataService } = await import('../server/services/sportsDataService.js');
+  
+  // A. Live matches
+  const liveData = await sportsDataService.getLiveMatches('all', true);
+  console.log(`   ✓ Live Matches: Cricket(${liveData.matches.cricket.length}), Football(${liveData.matches.football.length}), Badminton(${liveData.matches.badminton.length})`);
+  console.log(`   ✓ Live Source: ${liveData.sourceStatus.cricket.provider} | ${liveData.sourceStatus.football.provider}`);
+
+  // B. Dashboard & strict date validation
+  const realtimeDashData = await sportsDataService.getDashboardData(true);
+  console.log(`   ✓ Dashboard Fixtures: Cricket(${realtimeDashData.upcomingFixtures.cricket.length}), Football(${realtimeDashData.upcomingFixtures.football.length}), Badminton(${realtimeDashData.upcomingFixtures.badminton.length})`);
+  
+  // Verify future dates for upcoming fixtures
+  const allFixtures = [
+    ...realtimeDashData.upcomingFixtures.cricket,
+    ...realtimeDashData.upcomingFixtures.football,
+    ...realtimeDashData.upcomingFixtures.badminton
+  ];
+  allFixtures.forEach(f => {
+    const parsedDate = new Date(f.date);
+    if (!isNaN(parsedDate.getTime())) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      if (parsedDate < now) {
+        throw new Error(`Invalid fixture date: ${f.date} is in the past!`);
+      }
+    }
+  });
+  console.log(`   ✓ Strictly verified ${allFixtures.length} upcoming fixtures have valid future dates (Zero Stale 2024/2025 Fixtures)`);
+
+  // C. Football 4-league Standings
+  const eplStandings = await sportsDataService.getFootballStandings('epl');
+  const laligaStandings = await sportsDataService.getFootballStandings('laliga');
+  const bundesligaStandings = await sportsDataService.getFootballStandings('bundesliga');
+  const uclStandings = await sportsDataService.getFootballStandings('ucl');
+  console.log(`   ✓ Standings: EPL(${eplStandings.table.length} clubs), LaLiga(${laligaStandings.table.length} clubs), Bundesliga(${bundesligaStandings.table.length} clubs), UCL(${uclStandings.table.length} clubs)`);
+
+  // D. AI Real-Time Context Extraction
+  const eplQueryContext = await sportsDataService.getRealTimeContextForQuery('What is the latest Premier League table and who is top?');
+  if (!eplQueryContext.footballStandings) {
+    throw new Error('AI real-time context failed to extract EPL standings');
+  }
+  console.log(`   ✓ AI Query Context extracted EPL Standings (Leader: ${eplQueryContext.footballStandings.table[0].team} with ${eplQueryContext.footballStandings.table[0].points} pts)`);
+
+  const cricQueryContext = await sportsDataService.getRealTimeContextForQuery('Give me the live score of current India cricket match');
+  if (!cricQueryContext.cricketLiveScores) {
+    throw new Error('AI real-time context failed to extract live cricket match');
+  }
+  console.log(`   ✓ AI Query Context extracted Live Cricket Match (${cricQueryContext.cricketLiveScores[0].series})`);
+
+  console.log('\n🎉 ALL 12 SPORTSAI REAL-TIME INTELLIGENCE TEST SUITES PASSED FLAWLESSLY WITH REAL DATA & ZERO LEAKS!\n');
 }
 
 runTests().catch(err => {

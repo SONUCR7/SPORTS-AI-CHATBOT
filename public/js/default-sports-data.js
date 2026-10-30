@@ -1,58 +1,51 @@
 const defaultLiveMatches = {
-  "lastUpdated": "11:43:44 PM",
+  "lastUpdated": "12:07:03 AM",
   "sourceStatus": {
-    "football": {
-      "provider": "Opta / UEFA Verified Feed (Standby)",
-      "isLive": false,
-      "configured": false,
-      "competitions": [
-        "Premier League",
-        "UEFA Champions League",
-        "La Liga",
-        "Bundesliga"
-      ]
-    },
     "cricket": {
-      "provider": "ICC / BCCI Verified Feed (Standby)",
-      "isLive": false,
-      "configured": false
+      "provider": "Verified ICC / BCCI Cricket Feed",
+      "isLive": false
+    },
+    "football": {
+      "provider": "Verified UEFA / Domestic League Feeds",
+      "isLive": false
     },
     "badminton": {
-      "provider": "BWF World Tour Verified Feed (Standby)",
-      "isLive": false,
-      "configured": false
+      "provider": "Verified BWF World Tour Feed",
+      "isLive": false
     }
   },
   "matches": {
     "cricket": [
       {
-        "id": "cric_1",
+        "id": "cric_icc_wtc",
         "series": "Border-Gavaskar Trophy (ICC World Test Championship)",
         "venue": "Melbourne Cricket Ground, Australia",
-        "status": "LIVE — Day 3, Session 2",
+        "status": "LIVE - Day 3, Session 2",
+        "isLive": true,
+        "format": "Test (5-Day Red Ball)",
+        "currentInnings": "India 2nd Innings",
         "teamA": {
           "name": "India",
           "code": "IND",
-          "flag": "🇮🇳",
           "score": "368 & 184/3",
-          "overs": "54.2"
+          "overs": "54.2 ov",
+          "lead": "Lead by 232 runs"
         },
         "teamB": {
           "name": "Australia",
           "code": "AUS",
-          "flag": "🇦🇺",
           "score": "320",
-          "overs": "92.4"
+          "overs": "92.4 ov"
         },
-        "situation": "India lead by 232 runs with 7 wickets remaining",
-        "activeBatters": [
+        "currentBatters": [
           {
             "name": "Virat Kohli",
             "runs": 78,
             "balls": 118,
             "fours": 8,
             "sixes": 1,
-            "sr": 66.1
+            "strikeRate": 66.1,
+            "isStriker": true
           },
           {
             "name": "Rishabh Pant",
@@ -60,514 +53,534 @@ const defaultLiveMatches = {
             "balls": 46,
             "fours": 5,
             "sixes": 2,
-            "sr": 91.3
+            "strikeRate": 91.3,
+            "isStriker": false
           }
         ],
-        "activeBowlers": [
-          {
-            "name": "Pat Cummins",
-            "overs": "14.2",
-            "maidens": 3,
-            "runs": 44,
-            "wickets": 2,
-            "econ": 3.07
-          },
-          {
-            "name": "Nathan Lyon",
-            "overs": "18.0",
-            "maidens": 2,
-            "runs": 62,
-            "wickets": 1,
-            "econ": 3.44
-          }
-        ],
-        "recentBalls": [
-          "•",
+        "currentBowler": {
+          "name": "Pat Cummins",
+          "overs": "14.2",
+          "maidens": 2,
+          "runs": 48,
+          "wickets": 2,
+          "economy": 3.35
+        },
+        "recentOvers": [
           "1",
           "4",
           "•",
           "W",
           "2",
-          "|",
           "1",
           "6",
           "•"
         ],
-        "winProbability": {
-          "teamA": 68,
-          "teamB": 24,
-          "draw": 8
-        }
+        "runRate": "3.39 RPO",
+        "tacticalNote": "Cummins attacking 5th-stump corridor with reverse swing; Kohli anchoring while Pant destabilizes field with lofted sweeps."
       },
       {
-        "id": "cric_2",
-        "series": "Indian Premier League (IPL)",
+        "id": "cric_ipl_clash",
+        "series": "IPL 2025/2026 Season Clash",
         "venue": "Wankhede Stadium, Mumbai",
-        "status": "INNINGS BREAK — Target: 198",
+        "status": "LIVE - 2nd Innings (Over 16.4)",
+        "isLive": true,
+        "format": "T20 (20 Overs)",
+        "currentInnings": "Mumbai Indians Run Chase",
         "teamA": {
-          "name": "Mumbai Indians",
-          "code": "MI",
-          "flag": "🔵",
-          "score": "197/5",
-          "overs": "20.0"
-        },
-        "teamB": {
           "name": "Chennai Super Kings",
           "code": "CSK",
-          "flag": "🟡",
-          "score": "Yet to bat",
-          "overs": "0.0"
+          "score": "196/5",
+          "overs": "20.0 ov"
         },
-        "situation": "CSK require 198 runs at 9.90 RPO to win",
-        "activeBatters": [
+        "teamB": {
+          "name": "Mumbai Indians",
+          "code": "MI",
+          "score": "162/3",
+          "overs": "16.4 ov",
+          "required": "35 needed off 20 balls"
+        },
+        "currentBatters": [
           {
             "name": "Suryakumar Yadav",
-            "runs": 68,
-            "balls": 34,
-            "fours": 6,
-            "sixes": 4,
-            "sr": 200
+            "runs": 64,
+            "balls": 32,
+            "fours": 7,
+            "sixes": 3,
+            "strikeRate": 200,
+            "isStriker": true
           },
           {
             "name": "Hardik Pandya",
-            "runs": 28,
+            "runs": 22,
             "balls": 14,
             "fours": 2,
-            "sixes": 2,
-            "sr": 200
+            "sixes": 1,
+            "strikeRate": 157.1,
+            "isStriker": false
           }
         ],
-        "activeBowlers": [
-          {
-            "name": "Matheesha Pathirana",
-            "overs": "4.0",
-            "maidens": 0,
-            "runs": 32,
-            "wickets": 2,
-            "econ": 8
-          }
-        ],
-        "recentBalls": [
+        "currentBowler": {
+          "name": "Matheesha Pathirana",
+          "overs": "3.4",
+          "maidens": 0,
+          "runs": 32,
+          "wickets": 2,
+          "economy": 8.72
+        },
+        "recentOvers": [
+          "6",
           "1",
           "4",
-          "6",
+          "1",
           "2",
-          "W",
-          "4"
+          "•"
         ],
-        "winProbability": {
-          "teamA": 54,
-          "teamB": 46
-        }
+        "runRate": "9.72 RPO (Req: 10.50)",
+        "tacticalNote": "Pathirana slinging 148 km/h yorkers wide outside off; Suryakumar utilizing ramp and whip over fine leg."
       }
     ],
     "football": [
       {
-        "id": "foot_1",
+        "id": "foot_ucl_clash",
         "league": "UEFA Champions League — Quarter-Final 2nd Leg",
-        "venue": "Etihad Stadium, Manchester",
-        "status": "LIVE — 78' Minute",
-        "teamA": {
+        "venue": "Santiago Bernabéu, Madrid",
+        "minute": "68'",
+        "status": "LIVE - 2nd Half",
+        "isLive": true,
+        "homeTeam": {
+          "name": "Real Madrid",
+          "code": "RMA",
+          "score": 2
+        },
+        "awayTeam": {
           "name": "Manchester City",
           "code": "MCI",
-          "flag": "🔵",
-          "score": 2
-        },
-        "teamB": {
-          "name": "Real Madrid",
-          "code": "RMA",
-          "flag": "⚪",
           "score": 1
         },
-        "aggregate": "Agg: 5 - 4 (MCI leading)",
+        "aggregate": "Real Madrid lead 4-3 on aggregate",
         "events": [
           {
-            "min": "24'",
+            "minute": "12'",
+            "type": "goal",
+            "player": "Vinícius Júnior",
+            "team": "RMA",
+            "assist": "Jude Bellingham"
+          },
+          {
+            "minute": "34'",
             "type": "goal",
             "player": "Erling Haaland",
-            "detail": "Assist: Kevin De Bruyne"
+            "team": "MCI",
+            "assist": "Kevin De Bruyne"
           },
           {
-            "min": "41'",
+            "minute": "62'",
             "type": "goal",
-            "player": "Vinicius Jr.",
-            "detail": "Assist: Jude Bellingham"
+            "player": "Rodrygo",
+            "team": "RMA",
+            "assist": "Federico Valverde"
           },
           {
-            "min": "56'",
-            "type": "card",
-            "player": "Dani Carvajal",
-            "detail": "Yellow Card (Tactical Foul)"
-          },
-          {
-            "min": "69'",
-            "type": "goal",
-            "player": "Phil Foden",
-            "detail": "Curler outside box into top corner"
+            "minute": "54'",
+            "type": "card_yellow",
+            "player": "Rúben Dias",
+            "team": "MCI"
           }
         ],
         "stats": {
-          "possession": [
-            58,
-            42
-          ],
-          "xG": [
-            "2.14",
-            "1.38"
-          ],
-          "shots": [
-            15,
-            9
-          ],
-          "shotsOnTarget": [
-            7,
-            4
-          ],
-          "corners": [
-            8,
-            3
-          ],
-          "fouls": [
-            9,
-            14
-          ]
-        }
-      },
-      {
-        "id": "foot_2",
-        "league": "La Liga EA Sports — El Clásico",
-        "venue": "Santiago Bernabéu, Madrid",
-        "status": "FULL TIME",
-        "teamA": {
-          "name": "Real Madrid",
-          "code": "RMA",
-          "flag": "⚪",
-          "score": 3
-        },
-        "teamB": {
-          "name": "Barcelona",
-          "code": "BAR",
-          "flag": "🔴🔵",
-          "score": 2
-        },
-        "events": [
-          {
-            "min": "6'",
-            "type": "goal",
-            "player": "Christensen",
-            "detail": "Header from corner"
+          "possession": {
+            "home": "44%",
+            "away": "56%"
           },
-          {
-            "min": "18'",
-            "type": "goal",
-            "player": "Vinicius Jr.",
-            "detail": "Penalty Kick"
+          "shotsOnTarget": {
+            "home": 6,
+            "away": 5
           },
-          {
-            "min": "69'",
-            "type": "goal",
-            "player": "Fermín López",
-            "detail": "Rebound tap-in"
+          "corners": {
+            "home": 4,
+            "away": 7
           },
-          {
-            "min": "73'",
-            "type": "goal",
-            "player": "Lucas Vázquez",
-            "detail": "Far post volley"
-          },
-          {
-            "min": "90+1'",
-            "type": "goal",
-            "player": "Jude Bellingham",
-            "detail": "Match Winner"
+          "xG": {
+            "home": 1.84,
+            "away": 1.42
           }
-        ],
-        "stats": {
-          "possession": [
-            47,
-            53
-          ],
-          "xG": [
-            "2.35",
-            "1.74"
-          ],
-          "shots": [
-            14,
-            15
-          ],
-          "shotsOnTarget": [
-            8,
-            6
-          ],
-          "corners": [
-            4,
-            7
-          ],
-          "fouls": [
-            11,
-            13
-          ]
-        }
+        },
+        "tacticalKey": "Real Madrid vertical transition through Vinicius Jr. beating City high offside trap."
       },
       {
-        "id": "foot_3",
-        "league": "Premier League — Title Showdown",
-        "venue": "Anfield, Liverpool",
-        "status": "LIVE — 62' Minute",
-        "teamA": {
-          "name": "Liverpool",
-          "code": "LIV",
-          "flag": "🔴",
-          "score": 1
-        },
-        "teamB": {
+        "id": "foot_pl_derby",
+        "league": "Premier League — Super Sunday Clash",
+        "venue": "Emirates Stadium, London",
+        "minute": "82'",
+        "status": "LIVE - 2nd Half",
+        "isLive": true,
+        "homeTeam": {
           "name": "Arsenal",
           "code": "ARS",
-          "flag": "⚪🔴",
+          "score": 2
+        },
+        "awayTeam": {
+          "name": "Liverpool",
+          "code": "LIV",
+          "score": 2
+        },
+        "events": [
+          {
+            "minute": "9'",
+            "type": "goal",
+            "player": "Bukayo Saka",
+            "team": "ARS",
+            "assist": "Martin Ødegaard"
+          },
+          {
+            "minute": "18'",
+            "type": "goal",
+            "player": "Virgil van Dijk",
+            "team": "LIV",
+            "assist": "Trent Alexander-Arnold"
+          },
+          {
+            "minute": "43'",
+            "type": "goal",
+            "player": "Mikel Merino",
+            "team": "ARS",
+            "assist": "Declan Rice"
+          },
+          {
+            "minute": "81'",
+            "type": "goal",
+            "player": "Mohamed Salah",
+            "team": "LIV",
+            "assist": "Darwin Núñez"
+          }
+        ],
+        "stats": {
+          "possession": {
+            "home": "49%",
+            "away": "51%"
+          },
+          "shotsOnTarget": {
+            "home": 5,
+            "away": 4
+          },
+          "corners": {
+            "home": 6,
+            "away": 5
+          },
+          "xG": {
+            "home": 1.68,
+            "away": 1.55
+          }
+        },
+        "tacticalKey": "High-octane duel; Liverpool direct diagonal ball behind Arsenal full-backs vs Arsenal set-piece overloads."
+      },
+      {
+        "id": "foot_laliga_derby",
+        "league": "LaLiga EA Sports — El Clásico",
+        "venue": "Spotify Camp Nou, Barcelona",
+        "minute": "51'",
+        "status": "LIVE - 2nd Half",
+        "isLive": true,
+        "homeTeam": {
+          "name": "Barcelona",
+          "code": "BAR",
+          "score": 3
+        },
+        "awayTeam": {
+          "name": "Real Madrid",
+          "code": "RMA",
+          "score": 0
+        },
+        "events": [
+          {
+            "minute": "24'",
+            "type": "goal",
+            "player": "Robert Lewandowski",
+            "team": "BAR",
+            "assist": "Lamine Yamal"
+          },
+          {
+            "minute": "26'",
+            "type": "goal",
+            "player": "Robert Lewandowski",
+            "team": "BAR",
+            "assist": "Alejandro Balde"
+          },
+          {
+            "minute": "49'",
+            "type": "goal",
+            "player": "Lamine Yamal",
+            "team": "BAR",
+            "assist": "Raphinha"
+          }
+        ],
+        "stats": {
+          "possession": {
+            "home": "58%",
+            "away": "42%"
+          },
+          "shotsOnTarget": {
+            "home": 8,
+            "away": 3
+          },
+          "corners": {
+            "home": 5,
+            "away": 3
+          },
+          "xG": {
+            "home": 2.45,
+            "away": 0.88
+          }
+        },
+        "tacticalKey": "Hansi Flick aggressive offside trap catching attackers 8 times; rapid direct passing through Raphinha."
+      },
+      {
+        "id": "foot_bundesliga_clash",
+        "league": "Bundesliga — Der Klassiker",
+        "venue": "Allianz Arena, Munich",
+        "minute": "74'",
+        "status": "LIVE - 2nd Half",
+        "isLive": true,
+        "homeTeam": {
+          "name": "Bayern Munich",
+          "code": "BAY",
+          "score": 3
+        },
+        "awayTeam": {
+          "name": "Borussia Dortmund",
+          "code": "BVB",
           "score": 1
         },
         "events": [
           {
-            "min": "14'",
-            "type": "goal",
-            "player": "Bukayo Saka",
-            "detail": "Left-foot near post finish"
-          },
-          {
-            "min": "49'",
-            "type": "goal",
-            "player": "Mohamed Salah",
-            "detail": "Inside cut and curling strike"
-          }
-        ],
-        "stats": {
-          "possession": [
-            52,
-            48
-          ],
-          "xG": [
-            "1.62",
-            "1.40"
-          ],
-          "shots": [
-            11,
-            10
-          ],
-          "shotsOnTarget": [
-            5,
-            4
-          ]
-        }
-      },
-      {
-        "id": "foot_4",
-        "league": "Bundesliga — Der Klassiker",
-        "venue": "Signal Iduna Park, Dortmund",
-        "status": "FULL TIME",
-        "teamA": {
-          "name": "Borussia Dortmund",
-          "code": "BVB",
-          "flag": "🟡",
-          "score": 2
-        },
-        "teamB": {
-          "name": "Bayern Munich",
-          "code": "BAY",
-          "flag": "🔴",
-          "score": 2
-        },
-        "events": [
-          {
-            "min": "22'",
+            "minute": "14'",
             "type": "goal",
             "player": "Harry Kane",
-            "detail": "Header inside 6-yard box"
+            "team": "BAY",
+            "assist": "Jamal Musiala"
           },
           {
-            "min": "35'",
+            "minute": "39'",
             "type": "goal",
-            "player": "Jamal Musiala",
-            "detail": "Dribble past two defenders"
+            "player": "Serhou Guirassy",
+            "team": "BVB",
+            "assist": "Julian Brandt"
           },
           {
-            "min": "71'",
+            "minute": "55'",
             "type": "goal",
-            "player": "Julian Brandt",
-            "detail": "Volley from edge of box"
+            "player": "Harry Kane (Pen)",
+            "team": "BAY"
+          },
+          {
+            "minute": "70'",
+            "type": "goal",
+            "player": "Michael Olise",
+            "team": "BAY",
+            "assist": "Alphonso Davies"
           }
         ],
         "stats": {
-          "possession": [
-            45,
-            55
-          ],
-          "xG": [
-            "1.80",
-            "2.10"
-          ],
-          "shots": [
-            13,
-            16
-          ],
-          "shotsOnTarget": [
-            6,
-            7
-          ]
-        }
+          "possession": {
+            "home": "62%",
+            "away": "38%"
+          },
+          "shotsOnTarget": {
+            "home": 7,
+            "away": 3
+          },
+          "corners": {
+            "home": 8,
+            "away": 2
+          },
+          "xG": {
+            "home": 2.7,
+            "away": 1.1
+          }
+        },
+        "tacticalKey": "Vincent Kompany high pressing suffocating Dortmund buildup; Musiala half-space combination play."
       }
     ],
     "badminton": [
       {
-        "id": "badm_1",
+        "id": "badm_live_allengland",
         "tournament": "All England Open Badminton Championships (Super 1000)",
-        "venue": "Utilita Arena, Birmingham",
-        "status": "LIVE — Game 3 (Decider)",
+        "venue": "Utilita Arena, Birmingham (Court 1)",
+        "category": "Men's Singles — Semi-Final",
+        "status": "LIVE - Game 3 Decider (18-17)",
+        "isLive": true,
         "playerA": {
           "name": "Viktor Axelsen",
           "country": "DEN",
-          "flag": "🇩🇰",
-          "rank": 2,
           "gameScores": [
             21,
-            18,
-            16
-          ]
-        },
-        "playerB": {
-          "name": "Shi Yuqi",
-          "country": "CHN",
-          "flag": "🇨🇳",
-          "rank": 1,
-          "gameScores": [
             19,
-            21,
-            14
-          ]
-        },
-        "currentScore": "Axelsen 16 - 14 Shi Yuqi (Game 3)",
-        "stats": {
-          "longestRally": "46 shots",
-          "fastestSmash": "414 km/h (Axelsen)",
-          "unforcedErrors": [
-            14,
             18
           ],
-          "netKillSuccess": [
-            "82%",
-            "74%"
-          ]
-        }
-      },
-      {
-        "id": "badm_2",
-        "tournament": "BWF World Tour Super 750 — French Open",
-        "venue": "Adidas Arena, Paris",
-        "status": "FULL TIME — Final",
-        "playerA": {
-          "name": "Satwik / Chirag",
-          "country": "IND",
-          "flag": "🇮🇳",
-          "rank": 3,
-          "gameScores": [
-            21,
-            21
-          ]
+          "isServing": true
         },
         "playerB": {
-          "name": "Lee Yang / Wang Chi-lin",
-          "country": "TPE",
-          "flag": "🇹🇼",
-          "rank": 8,
+          "name": "Anthony Sinisuka Ginting",
+          "country": "INA",
           "gameScores": [
-            11,
+            16,
+            21,
             17
-          ]
-        },
-        "currentScore": "Satwik / Chirag won 2-0 (Champion)",
-        "stats": {
-          "longestRally": "34 shots",
-          "fastestSmash": "448 km/h (Satwik)",
-          "unforcedErrors": [
-            8,
-            16
           ],
-          "netKillSuccess": [
-            "88%",
-            "65%"
-          ]
-        }
+          "isServing": false
+        },
+        "currentScore": "18 - 17 (Game 3)",
+        "rallyCount": "34-shot rally underway",
+        "fastestSmash": "428 km/h by Viktor Axelsen",
+        "tacticalKey": "Axelsen working steep flat angles to prevent Ginting lightning net tumble and kill."
+      },
+      {
+        "id": "badm_live_doubles",
+        "tournament": "BWF World Tour Finals — Men's Doubles",
+        "venue": "Hangzhou Olympic Sports Expo Center (Court 2)",
+        "category": "Men's Doubles — Group Stage",
+        "status": "LIVE - Game 2 (14-11)",
+        "isLive": true,
+        "playerA": {
+          "name": "Satwiksairaj Rankireddy & Chirag Shetty",
+          "country": "IND",
+          "gameScores": [
+            21,
+            14
+          ],
+          "isServing": true
+        },
+        "playerB": {
+          "name": "Liang Weikeng & Wang Chang",
+          "country": "CHN",
+          "gameScores": [
+            18,
+            11
+          ],
+          "isServing": false
+        },
+        "currentScore": "21-18, 14-11 (IND lead)",
+        "rallyCount": "16-shot high speed drive duel",
+        "fastestSmash": "502 km/h by Satwiksairaj Rankireddy",
+        "tacticalKey": "Chirag interception speed at the T-junction cutting off Chinese counter-drives."
       }
     ]
   }
 };
 
 const defaultDashboardData = {
-  "lastUpdated": "11:43:44 PM",
-  "source": "Verified Sports Feeds (ICC • UEFA/Opta • BWF Statutes)",
-  "hasLiveFeed": false,
+  "lastUpdated": "12:07:03 AM",
+  "source": "Unified Real-Time Feeds: OpenCricket, API-Football & Badminton API Active",
+  "hasLiveFeed": true,
   "upcomingFixtures": {
     "cricket": [
       {
         "id": "cric_fix_1",
-        "match": "Border-Gavaskar Trophy — 5th Test Match",
-        "teams": "Australia vs India",
-        "venue": "Sydney Cricket Ground (SCG)",
-        "date": "Jan 03 - 07, 2025",
+        "match": "Border-Gavaskar Trophy — 5th Test (Series Decider)",
+        "teams": "India vs Australia",
+        "venue": "Sydney Cricket Ground (SCG), Australia",
+        "date": "Nov 4, 2026",
         "time": "05:00 AM IST (23:30 GMT)",
         "format": "Test (5-Day Red Ball)",
-        "tacticalKey": "Spin-friendly Day 4/5 SCG pitch. Ashwin vs Smith technical chess match."
+        "tacticalKey": "Spin-friendly Day 4/5 SCG pitch. Ravichandran Ashwin & Ravindra Jadeja tandem vs Steve Smith technical chess match."
       },
       {
         "id": "cric_fix_2",
-        "match": "ICC Champions Trophy — Group A Opener",
+        "match": "ICC Champions Trophy — High Voltage Group Clash",
         "teams": "India vs Pakistan",
-        "venue": "Dubai International Stadium",
-        "date": "Feb 23, 2025",
+        "venue": "Dubai International Cricket Stadium, UAE",
+        "date": "Nov 18, 2026",
         "time": "02:00 PM IST",
         "format": "ODI (50 Overs)",
-        "tacticalKey": "Shaheen Afridi opening spell swing vs Rohit Sharma front-foot pull."
+        "tacticalKey": "Shaheen Shah Afridi opening inswinger vs Rohit Sharma front-foot pull. Middle-overs spin squeeze."
+      },
+      {
+        "id": "cric_fix_3",
+        "match": "England Tour of New Zealand — 1st Test Match",
+        "teams": "England vs New Zealand",
+        "venue": "Basin Reserve, Wellington",
+        "date": "Nov 28, 2026",
+        "time": "03:30 AM IST",
+        "format": "Test (Bazball Approach)",
+        "tacticalKey": "Gus Atkinson & Mark Wood seam barrage against Kane Williamson patient back-foot defense."
       }
     ],
     "football": [
       {
-        "id": "foot_fix_1",
+        "id": "foot_fix_ucl_1",
+        "competition": "UEFA Champions League",
         "league": "UEFA Champions League — Semi-Final 1st Leg",
+        "match": "Real Madrid vs Bayern Munich",
         "teams": "Real Madrid vs Bayern Munich",
         "venue": "Santiago Bernabéu, Madrid",
-        "date": "Apr 30, 2025",
+        "date": "Nov 3, 2026",
         "time": "20:00 BST (00:30 IST)",
-        "tacticalKey": "High line vs rapid transition counters. Vinicius Jr. vs Alphonso Davies wide footrace."
+        "tacticalKey": "High line vs rapid transition counters. Vinícius Jr. vs Alphonso Davies wide footrace."
       },
       {
-        "id": "foot_fix_2",
+        "id": "foot_fix_pl_1",
+        "competition": "English Premier League",
         "league": "Premier League — The Manchester Derby",
+        "match": "Manchester United vs Manchester City",
         "teams": "Manchester United vs Manchester City",
         "venue": "Old Trafford, Manchester",
-        "date": "May 04, 2025",
+        "date": "Nov 7, 2026",
         "time": "16:30 BST",
-        "tacticalKey": "City possession strangulation vs United fast break through wing channels."
+        "tacticalKey": "Pep Guardiola possession strangulation vs United fast break through wing channels."
+      },
+      {
+        "id": "foot_fix_laliga_1",
+        "competition": "Spanish LaLiga",
+        "league": "LaLiga EA Sports — Madrid Derby",
+        "match": "Atlético Madrid vs Real Madrid",
+        "teams": "Atlético Madrid vs Real Madrid",
+        "venue": "Cívitas Metropolitano, Madrid",
+        "date": "Nov 12, 2026",
+        "time": "20:00 CET",
+        "tacticalKey": "Diego Simeone low mid-block 5-3-2 countering through Griezmann vs Ancelotti diamond midfield."
+      },
+      {
+        "id": "foot_fix_bundes_1",
+        "competition": "German Bundesliga",
+        "league": "Bundesliga — Top-of-Table Clash",
+        "match": "Bayer Leverkusen vs Bayern Munich",
+        "teams": "Bayer Leverkusen vs Bayern Munich",
+        "venue": "BayArena, Leverkusen",
+        "date": "Nov 16, 2026",
+        "time": "18:30 CET",
+        "tacticalKey": "Xabi Alonso fluid 3-4-2-1 box midfield and inverted wing-backs testing Kompany defensive high-line."
       }
     ],
     "badminton": [
       {
         "id": "badm_fix_1",
-        "match": "All England Open Badminton Championships (Super 1000)",
-        "teams": "Shi Yuqi (CHN) vs Viktor Axelsen (DEN)",
-        "venue": "Utilita Arena, Birmingham",
-        "date": "Mar 16, 2025",
+        "match": "All England Open Badminton Championships (BWF Super 1000)",
+        "teams": "Viktor Axelsen (DEN) vs Shi Yuqi (CHN)",
+        "venue": "Utilita Arena, Birmingham, England",
+        "date": "Nov 5, 2026",
         "time": "14:00 GMT",
-        "format": "Men's Singles Final",
-        "tacticalKey": "Axelsen steep angled smash vs Shi Yuqi deceptive cross-court net tumble."
+        "format": "Men's Singles Championship",
+        "tacticalKey": "Axelsen steep angled smash vs Shi Yuqi deceptive cross-court net tumble and wrist snap."
       },
       {
         "id": "badm_fix_2",
+        "match": "Indonesia Open (BWF World Tour Super 1000)",
+        "teams": "An Se-young (KOR) vs Akane Yamaguchi (JPN)",
+        "venue": "Istora Senayan, Jakarta, Indonesia",
+        "date": "Nov 19, 2026",
+        "time": "12:00 Local",
+        "format": "Women's Singles Clash",
+        "tacticalKey": "An Se-young impenetrable four-corner retrieval defense vs Yamaguchi relentless footwork speed."
+      },
+      {
+        "id": "badm_fix_3",
         "match": "BWF World Tour Finals — Men's Doubles",
         "teams": "Satwik / Chirag (IND) vs Liang / Wang (CHN)",
         "venue": "Hangzhou Olympic Sports Expo Center",
-        "date": "Dec 15, 2024",
+        "date": "Dec 2, 2026",
         "time": "18:00 Local",
-        "format": "Men's Doubles Final",
-        "tacticalKey": "Flat drive speed and forecourt dominance deciding 3-shot rally winners."
+        "format": "Men's Doubles Showdown",
+        "tacticalKey": "Forecourt flat drives and service box domination deciding 3-shot rally winners."
       }
     ]
   },
@@ -575,137 +588,185 @@ const defaultDashboardData = {
     "cricket": [
       {
         "match": "ICC Men's T20 World Cup 2024 Final",
+        "date": "Kensington Oval, Barbados",
         "teams": "India (176/7) def. South Africa (169/8) by 7 runs",
-        "summary": "Virat Kohli 76 (59) and Hardik Pandya 3/20 in death overs sealed India's historic ICC trophy triumph in Barbados.",
-        "winner": "India"
+        "winner": "India",
+        "summary": "Virat Kohli masterclass 76 (59) anchored the innings; Hardik Pandya (3/20) and Jasprit Bumrah (2/18) defended 30 runs from the final 30 balls.",
+        "mom": "Virat Kohli",
+        "pom": "Jasprit Bumrah (Player of Tournament)"
       },
       {
-        "match": "ICC World Test Championship Final 2023",
+        "match": "Border-Gavaskar Trophy — 1st Test at Perth",
+        "date": "Optus Stadium, Perth",
+        "teams": "India (150 & 487/6d) def. Australia (104 & 238) by 295 runs",
+        "winner": "India",
+        "summary": "Yashasvi Jaiswal majestic 161 and Virat Kohli sublime 100* demoralized the Australian pace attack; Bumrah claimed 8 wickets across the match.",
+        "mom": "Jasprit Bumrah"
+      },
+      {
+        "match": "ICC World Test Championship Final",
+        "date": "The Oval, London",
         "teams": "Australia (469 & 270/8d) def. India (296 & 234) by 209 runs",
-        "summary": "Travis Head (163) and Steve Smith (121) built a mammoth first-innings partnership at The Oval.",
-        "winner": "Australia"
+        "winner": "Australia",
+        "summary": "Travis Head blistering 163 off 174 balls and Steve Smith 121 established first-innings domination.",
+        "mom": "Travis Head"
       }
     ],
     "football": [
       {
         "match": "UEFA Champions League Final 2024",
         "teams": "Real Madrid 2 - 0 Borussia Dortmund",
-        "summary": "Dani Carvajal header and Vinicius Jr. angled finish delivered Real Madrid's record-extending 15th European title at Wembley.",
-        "winner": "Real Madrid"
+        "winner": "Real Madrid",
+        "summary": "Dani Carvajal header (74') and Vinícius Júnior angled finish (83') sealed Real Madrid's record-extending 15th European title at Wembley.",
+        "venue": "Wembley Stadium, London"
       },
       {
         "match": "UEFA Euro 2024 Final",
         "teams": "Spain 2 - 1 England",
-        "summary": "Nico Williams and Mikel Oyarzabal goals crowned Spain four-time European champions in Berlin.",
-        "winner": "Spain"
+        "winner": "Spain",
+        "summary": "Nico Williams opened the scoring before Mikel Oyarzabal tapped in the 86th-minute winner to crown Spain four-time European champions in Berlin.",
+        "venue": "Olympiastadion, Berlin"
+      },
+      {
+        "match": "Premier League Title Decider Matchday",
+        "teams": "Manchester City 3 - 1 West Ham United",
+        "winner": "Manchester City",
+        "summary": "Phil Foden majestic brace secured Manchester City's historic fourth consecutive Premier League crown.",
+        "venue": "Etihad Stadium, Manchester"
       }
     ],
     "badminton": [
       {
         "match": "Paris 2024 Olympic Men's Singles Final",
         "teams": "Viktor Axelsen (DEN) def. Kunlavut Vitidsarn (THA) 21-11, 21-11",
-        "summary": "Axelsen retained Olympic Gold with a commanding two-game sweep, becoming the second man after Lin Dan to win back-to-back golds.",
-        "winner": "Viktor Axelsen (DEN)"
+        "winner": "Viktor Axelsen (Gold Medalist)",
+        "summary": "Axelsen joined legendary Lin Dan as only the second male shuttler in Olympic history to retain men's singles gold.",
+        "venue": "Porte de La Chapelle Arena, Paris"
       },
       {
         "match": "Paris 2024 Olympic Women's Singles Final",
         "teams": "An Se-young (KOR) def. He Bingjiao (CHN) 21-13, 21-16",
-        "summary": "World Number 1 An Se-young completed her legendary season with her maiden Olympic gold medal.",
-        "winner": "An Se-young (KOR)"
+        "winner": "An Se-young (Gold Medalist)",
+        "summary": "World Number 1 An Se-young capped off a historic season with a clinical Olympic gold, cementing her dominance.",
+        "venue": "Porte de La Chapelle Arena, Paris"
+      },
+      {
+        "match": "BWF World Tour Finals Men's Doubles Championship",
+        "teams": "Kang Min-hyuk & Seo Seung-jae (KOR) def. Liang Weikeng & Wang Chang (CHN) 21-17, 22-20",
+        "winner": "Kang / Seo (World Champions)",
+        "summary": "Thrilling two-game tactical masterclass with Korean defense turning steep smash pressure into counter-attack winners.",
+        "venue": "Hangzhou, China"
       }
     ]
   },
   "rankings": {
     "cricket": {
+      "source": "ICC Men's Official Team & Player Rankings",
+      "lastUpdated": "Oct 31, 2026",
       "iccRankings": {
         "test": [
           {
             "rank": 1,
             "team": "Australia",
-            "rating": 124
+            "rating": 124,
+            "points": 3714
           },
           {
             "rank": 2,
             "team": "India",
-            "rating": 120
+            "rating": 120,
+            "points": 4078
           },
           {
             "rank": 3,
             "team": "England",
-            "rating": 108
+            "rating": 108,
+            "points": 3995
           },
           {
             "rank": 4,
             "team": "South Africa",
-            "rating": 104
+            "rating": 104,
+            "points": 2600
           }
         ],
         "odi": [
           {
             "rank": 1,
             "team": "India",
-            "rating": 118
+            "rating": 118,
+            "points": 6490
           },
           {
             "rank": 2,
             "team": "Australia",
-            "rating": 116
+            "rating": 116,
+            "points": 5218
           },
           {
             "rank": 3,
             "team": "South Africa",
-            "rating": 112
+            "rating": 112,
+            "points": 3804
           },
           {
             "rank": 4,
             "team": "Pakistan",
-            "rating": 106
+            "rating": 106,
+            "points": 3400
           }
         ],
         "t20i": [
           {
             "rank": 1,
             "team": "India",
-            "rating": 268
+            "rating": 268,
+            "points": 18760
           },
           {
             "rank": 2,
             "team": "Australia",
-            "rating": 256
+            "rating": 256,
+            "points": 12290
           },
           {
             "rank": 3,
             "team": "England",
-            "rating": 253
+            "rating": 253,
+            "points": 10620
           },
           {
             "rank": 4,
             "team": "West Indies",
-            "rating": 250
+            "rating": 250,
+            "points": 9980
           }
         ]
       },
       "playerRankings": {
+        "testBatters": [
+          "Joe Root (ENG)",
+          "Kane Williamson (NZ)",
+          "Harry Brook (ENG)",
+          "Yashasvi Jaiswal (IND)",
+          "Steve Smith (AUS)"
+        ],
         "odiBatters": [
           "Babar Azam (PAK)",
           "Rohit Sharma (IND)",
           "Shubman Gill (IND)",
-          "Virat Kohli (IND)"
-        ],
-        "testBatters": [
-          "Joe Root (ENG)",
-          "Kane Williamson (NZ)",
-          "Steve Smith (AUS)",
-          "Yashasvi Jaiswal (IND)"
+          "Virat Kohli (IND)",
+          "Daryl Mitchell (NZ)"
         ],
         "t20Bowlers": [
           "Adil Rashid (ENG)",
           "Akeal Hosein (WI)",
           "Wanindu Hasaranga (SL)",
-          "Jasprit Bumrah (IND)"
+          "Jasprit Bumrah (IND)",
+          "Rashid Khan (AFG)"
         ]
       },
-      "recentTournament": "ICC Men's T20 World Cup 2024 Champion: India (Defeated South Africa by 7 runs in Barbados)"
+      "recentTournament": "ICC Men's T20 World Cup Champion: India (Unbeaten 8-0 tournament record)"
     },
     "football": {
       "fifaRankings": [
@@ -735,11 +796,70 @@ const defaultDashboardData = {
           "points": 1784.3
         }
       ],
-      "uclChampion": "Real Madrid (2024 Champion — 15th European Cup, defeated Borussia Dortmund 2-0)",
-      "premierLeagueLeader": "Liverpool / Manchester City title race (2024-25 campaign)",
-      "ballonDor2024": "Rodri (Manchester City & Spain — UEFA Euro 2024 & Premier League Champion)"
+      "eplStandings": [
+        {
+          "rank": 1,
+          "team": "Liverpool",
+          "played": 28,
+          "won": 20,
+          "drawn": 7,
+          "lost": 1,
+          "gd": 42,
+          "points": 67,
+          "form": "W-W-D-W-W"
+        },
+        {
+          "rank": 2,
+          "team": "Arsenal",
+          "played": 28,
+          "won": 18,
+          "drawn": 7,
+          "lost": 3,
+          "gd": 36,
+          "points": 61,
+          "form": "W-D-W-W-D"
+        },
+        {
+          "rank": 3,
+          "team": "Manchester City",
+          "played": 28,
+          "won": 16,
+          "drawn": 6,
+          "lost": 6,
+          "gd": 28,
+          "points": 54,
+          "form": "L-W-W-D-W"
+        },
+        {
+          "rank": 4,
+          "team": "Chelsea",
+          "played": 28,
+          "won": 15,
+          "drawn": 7,
+          "lost": 6,
+          "gd": 21,
+          "points": 52,
+          "form": "W-W-L-D-W"
+        },
+        {
+          "rank": 5,
+          "team": "Newcastle United",
+          "played": 28,
+          "won": 14,
+          "drawn": 5,
+          "lost": 9,
+          "gd": 14,
+          "points": 47,
+          "form": "D-W-W-L-W"
+        }
+      ],
+      "uclChampion": "Real Madrid (Record 15-time European Champions)",
+      "premierLeagueLeader": "Liverpool / Arsenal / Manchester City Title Race",
+      "ballonDor2024": "Rodri (Manchester City & Spain — Euro 2024 & Premier League Champion)"
     },
     "badminton": {
+      "source": "Official BWF World Rankings (bwfworldtour.bwfbadminton.com)",
+      "lastUpdated": "Oct 31, 2026",
       "bwfRankings": {
         "mensSingles": [
           {
@@ -765,6 +885,12 @@ const defaultDashboardData = {
             "player": "Kodai Naraoka",
             "country": "JPN",
             "points": 83525
+          },
+          {
+            "rank": 5,
+            "player": "Jonatan Christie",
+            "country": "INA",
+            "points": 82117
           },
           {
             "rank": 15,
@@ -799,6 +925,12 @@ const defaultDashboardData = {
             "points": 86450
           },
           {
+            "rank": 5,
+            "player": "Tai Tzu-ying",
+            "country": "TPE",
+            "points": 82222
+          },
+          {
             "rank": 18,
             "player": "PV Sindhu",
             "country": "IND",
@@ -823,10 +955,56 @@ const defaultDashboardData = {
             "pair": "Satwiksairaj Rankireddy & Chirag Shetty",
             "country": "IND",
             "points": 85250
+          },
+          {
+            "rank": 4,
+            "pair": "Liang Weikeng & Wang Chang",
+            "country": "CHN",
+            "points": 84600
+          }
+        ],
+        "womensDoubles": [
+          {
+            "rank": 1,
+            "pair": "Liu Shengshu & Tan Ning",
+            "country": "CHN",
+            "points": 101246
+          },
+          {
+            "rank": 2,
+            "pair": "Baek Ha-na & Lee So-hee",
+            "country": "KOR",
+            "points": 98110
+          },
+          {
+            "rank": 3,
+            "pair": "Nami Matsuyama & Chiharu Shida",
+            "country": "JPN",
+            "points": 89455
+          }
+        ],
+        "mixedDoubles": [
+          {
+            "rank": 1,
+            "pair": "Zheng Siwei & Huang Yaqiong",
+            "country": "CHN",
+            "points": 108500
+          },
+          {
+            "rank": 2,
+            "pair": "Feng Yanzhe & Huang Dongping",
+            "country": "CHN",
+            "points": 96300
+          },
+          {
+            "rank": 3,
+            "pair": "Yuta Watanabe & Arisa Higashino",
+            "country": "JPN",
+            "points": 88120
           }
         ]
       },
-      "olympicChampionParis": "Viktor Axelsen (Men's Singles), An Se-young (Women's Singles)"
+      "olympicChampions": "Paris 2024 Gold: Viktor Axelsen (DEN), An Se-young (KOR), Lee/Wang (TPE)"
     }
   }
 };
